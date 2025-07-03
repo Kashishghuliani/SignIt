@@ -3,21 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 
-
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert(isSignUp ? "Account Created!" : "Logged In!");
-    navigate('/dashboard');
-  };
+  const API_URL = 'https://signit-backend-js8l.onrender.com';  // ✅ Your deployed backend
 
-  const handleGoogleSuccess = (credentialResponse) => {
-    console.log("Google Credential:", credentialResponse);
-    alert("Google Login Successful!");
-    navigate('/dashboard');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { email, password };
+      if (isSignUp) payload.name = fullName;
+
+      const endpoint = isSignUp ? '/api/auth/register' : '/api/auth/login';
+      const res = await axios.post(`${API_URL}${endpoint}`, payload);
+
+      localStorage.setItem('token', res.data.token);
+      alert(isSignUp ? "Account Created!" : "Logged In!");
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error occurred. Try again.");
+    }
   };
 
   return (
@@ -32,23 +42,21 @@ const AuthPage = () => {
 
           <div className="flex gap-4 mb-6">
             <GoogleLogin
-  onSuccess={async (credentialResponse) => {
-    try {
-      const res = await axios.post('http://localhost:5000/api/auth/google', {
-        credential: credentialResponse.credential
-      });
-
-      console.log("Server Response:", res.data);
-      localStorage.setItem('token', res.data.token); // Save your app's token
-      alert("Google Login Successful!");
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      alert("Google Login Failed");
-    }
-  }}
-  onError={() => alert("Google Login Failed")}
-/>
+              onSuccess={async (credentialResponse) => {
+                try {
+                  const res = await axios.post(`${API_URL}/api/auth/google`, {
+                    credential: credentialResponse.credential
+                  });
+                  localStorage.setItem('token', res.data.token);
+                  alert("Google Login Successful!");
+                  navigate('/dashboard');
+                } catch (err) {
+                  console.error(err);
+                  alert("Google Login Failed");
+                }
+              }}
+              onError={() => alert("Google Login Failed")}
+            />
           </div>
 
           <p className="text-gray-400 text-sm mb-6">or use your email account</p>
@@ -58,6 +66,8 @@ const AuthPage = () => {
               <input
                 type="text"
                 placeholder="Full Name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 className="w-full border border-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
                 required
               />
@@ -66,6 +76,8 @@ const AuthPage = () => {
             <input
               type="email"
               placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
               required
             />
@@ -73,6 +85,8 @@ const AuthPage = () => {
             <input
               type="password"
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
               required
             />
@@ -101,7 +115,7 @@ const AuthPage = () => {
           </form>
         </div>
 
-        {/* Right Section (Welcome Message) */}
+        {/* Right Section */}
         <div className="w-1/2 flex flex-col items-center justify-center bg-gradient-to-r from-red-400 to-red-600 text-white text-center p-10">
           <h2 className="text-3xl font-bold mb-4">
             {isSignUp ? "Welcome Back!" : "SignIt"}

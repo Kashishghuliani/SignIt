@@ -11,7 +11,7 @@ client/build
 .vscode/
 
 # PDF uploads in backend
-server/uploads/
+/uploads
 
 # Environment files
 .env
