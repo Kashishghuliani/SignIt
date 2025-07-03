@@ -10,7 +10,7 @@ const AuthPage = () => {
   const [fullName, setFullName] = useState('');
   const navigate = useNavigate();
 
-  const API_URL = 'https://signit-backend-js8l.onrender.com';  // ✅ Your deployed backend
+  const API_URL = 'https://signit-backend-js8l.onrender.com';  // Your deployed backend
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,9 +21,15 @@ const AuthPage = () => {
       const endpoint = isSignUp ? '/api/auth/register' : '/api/auth/login';
       const res = await axios.post(`${API_URL}${endpoint}`, payload);
 
-      localStorage.setItem('token', res.data.token);
-      alert(isSignUp ? "Account Created!" : "Logged In!");
-      navigate('/dashboard');
+      if (isSignUp) {
+        alert("Account created successfully! Please sign in.");
+        setIsSignUp(false);  // Switch to login form after signup
+      } else {
+        localStorage.setItem('token', res.data.token);
+        alert("Logged In Successfully!");
+        navigate('/dashboard');
+      }
+
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Error occurred. Try again.");
@@ -118,12 +124,12 @@ const AuthPage = () => {
         {/* Right Section */}
         <div className="w-1/2 flex flex-col items-center justify-center bg-gradient-to-r from-red-400 to-red-600 text-white text-center p-10">
           <h2 className="text-3xl font-bold mb-4">
-            {isSignUp ? "Welcome Back!" : "SignIt"}
+            {isSignUp ? "Welcome to SignIt!" : "SignIt"}
           </h2>
           <p className="mb-6">
             {isSignUp
               ? "Already have an account? Sign in to continue signing documents."
-              : "Enter your personal details and start your document signing journey with us."}
+              : "Enter your details and start your document signing journey."}
           </p>
           <button
             onClick={() => setIsSignUp(!isSignUp)}
