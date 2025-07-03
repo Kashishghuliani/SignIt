@@ -4,7 +4,7 @@ import PublicSign from './pages/PublicSign';
 import AuditTrailPage from './pages/AuditTrailPage';
 import AuthPage from "./pages/AuthPage";
 import ForgotPassword from './pages/ForgotPassword';
-
+import ResetPassword from './pages/ResetPassword';
 function App() {
   return (
     <BrowserRouter>
@@ -13,6 +13,7 @@ function App() {
         <Route path="/" element={<AuthPage />} />       {/* Combined Login/Signup */}
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/sign/:token" element={<PublicSign />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* User/Protected Routes */}
         <Route path="/dashboard" element={<Dashboard />} />
