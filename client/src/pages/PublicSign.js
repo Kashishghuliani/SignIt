@@ -9,6 +9,8 @@ const PublicSign = () => {
   const { token } = useParams();
   const navigate = useNavigate();
 
+  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
   const [fileUrl, setFileUrl] = useState('');
   const [pdfSize, setPdfSize] = useState({ width: 0, height: 0 });
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
@@ -21,35 +23,27 @@ const PublicSign = () => {
   const [message, setMessage] = useState('');
 
   const wrapperRef = useRef(null);
-  const pageRef = useRef(null);
 
   useEffect(() => {
     const fetchDoc = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/docs/public/${token}`);
+        const res = await axios.get(`${API_URL}/api/docs/public/${token}`);
         if (!res.data?.filepath) throw new Error('Invalid file');
-        setFileUrl(`http://localhost:5000/uploads/${res.data.filepath}`);
+        setFileUrl(`${API_URL}/uploads/${res.data.filepath}`);
       } catch (err) {
         console.error(err);
         setMessage('Invalid or expired link');
       }
     };
     fetchDoc();
-  }, [token]);
+  }, [token, API_URL]);
 
-  useEffect(() => {
-    if (!fileUrl) return;
-    const interval = setInterval(() => {
-      if (pageRef.current) {
-        const rect = pageRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          setPdfSize({ width: rect.width, height: rect.height });
-          clearInterval(interval);
-        }
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [fileUrl]);
+  const onPageLoadSuccess = (page) => {
+    // get the viewport with scale 1
+    const viewport = page.getViewport({ scale: 1 });
+    // You can adjust scale if needed, or just use viewport dimensions as is
+    setPdfSize({ width: viewport.width, height: viewport.height });
+  };
 
   const handleMouseDown = () => {
     if (!placed && signatureText.trim()) setIsDragging(true);
@@ -76,7 +70,7 @@ const PublicSign = () => {
     }
     setIsSubmitting(true);
     try {
-      await axios.post('http://localhost:5000/api/docs/public-sign', {
+      await axios.post(`${API_URL}/api/docs/public-sign`, {
         token,
         x: dragPos.x,
         y: dragPos.y,
@@ -100,7 +94,7 @@ const PublicSign = () => {
   return (
     <div className="p-4 flex justify-center">
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl">
-        
+
         <h2 className="text-3xl font-bold text-center mb-6" style={{ color: '#d90429' }}>
           Document Signature
         </h2>
@@ -120,6 +114,7 @@ const PublicSign = () => {
               className="border px-4 py-2 rounded w-full mb-3"
               value={signatureText}
               onChange={(e) => setSignatureText(e.target.value)}
+              disabled={placed}
             />
             <div className="flex items-center gap-4">
               <label className="text-sm">Font Size:</label>
@@ -130,6 +125,7 @@ const PublicSign = () => {
                 value={fontSize}
                 onChange={(e) => setFontSize(Number(e.target.value))}
                 className="border px-2 py-1 w-20"
+                disabled={placed}
               />
               <label className="text-sm">Color:</label>
               <input
@@ -137,6 +133,7 @@ const PublicSign = () => {
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
                 className="w-10 h-10 border"
+                disabled={placed}
               />
             </div>
           </div>
@@ -150,11 +147,9 @@ const PublicSign = () => {
             className="border mx-auto relative overflow-hidden bg-white shadow mb-6"
             style={{ width: '100%', maxWidth: '700px', minHeight: '900px' }}
           >
-            <div ref={pageRef}>
-              <Document file={fileUrl}>
-                <Page pageNumber={1} />
-              </Document>
-            </div>
+            <Document file={fileUrl}>
+              <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} />
+            </Document>
 
             {pdfSize.width > 0 && signatureText.trim() && (
               <div

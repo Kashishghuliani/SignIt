@@ -26,6 +26,9 @@ const Dashboard = () => {
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
+  // Use environment variable for backend URL
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
   useEffect(() => {
     if (!token) navigate('/login');
     else fetchDocuments();
@@ -45,7 +48,7 @@ const Dashboard = () => {
 
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/docs', {
+      const res = await axios.get(`${BACKEND_URL}/api/docs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDocuments(res.data);
@@ -60,6 +63,8 @@ const Dashboard = () => {
         alert("Session expired. Please login again.");
         localStorage.removeItem('token');
         navigate('/login');
+      } else {
+        alert("Error fetching documents.");
       }
     }
   };
@@ -76,7 +81,7 @@ const Dashboard = () => {
     formData.append('pdf', pdfFile);
 
     try {
-      await axios.post('http://localhost:5000/api/docs/upload', formData, {
+      await axios.post(`${BACKEND_URL}/api/docs/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
       });
       alert("PDF uploaded successfully!");
@@ -94,7 +99,7 @@ const Dashboard = () => {
     if (!selectedDoc) return;
     if (!window.confirm("Are you sure you want to delete this PDF?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/docs/${selectedDoc._id}`, {
+      await axios.delete(`${BACKEND_URL}/api/docs/${selectedDoc._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("PDF deleted successfully!");
@@ -109,7 +114,7 @@ const Dashboard = () => {
   const finalizePdf = async () => {
     if (!selectedDoc) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/signatures/finalize', {
+      const res = await axios.post(`${BACKEND_URL}/api/signatures/finalize`, {
         documentId: selectedDoc._id
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -126,7 +131,7 @@ const Dashboard = () => {
     const recipientEmail = prompt("Enter recipient's email to send signing link:");
     if (!recipientEmail) return;
     try {
-      await axios.post('http://localhost:5000/api/docs/send-link', {
+      await axios.post(`${BACKEND_URL}/api/docs/send-link`, {
         documentId: selectedDoc._id,
         recipientEmail
       }, {
@@ -147,7 +152,7 @@ const Dashboard = () => {
 
   const viewPdf = () => {
     if (!selectedDoc) return;
-    setSelectedPdf(`http://localhost:5000/uploads/${selectedDoc.filepath.split('/').pop()}`);
+    setSelectedPdf(`${BACKEND_URL}/uploads/${selectedDoc.filepath.split('/').pop()}`);
   };
 
   const logout = () => {
@@ -202,7 +207,7 @@ const Dashboard = () => {
                   <td className="border px-4 py-2 text-green-600 text-center">{doc.signatureSummary?.signed || 0}</td>
                   <td className="border px-4 py-2 text-yellow-600 text-center">{doc.signatureSummary?.pending || 0}</td>
                   <td className="border px-4 py-2 text-red-500 text-center">{doc.signatureSummary?.rejected || 0}</td>
-                  <td className="border px-4 py-2 text-center">{doc.token ? <a href={`http://localhost:3000/sign/${doc.token}`} target="_blank" rel="noreferrer" className="text-blue-500 underline">Open Link</a> : <span className="text-gray-400">None</span>}</td>
+                  <td className="border px-4 py-2 text-center">{doc.token ? <a href={`${BACKEND_URL.replace(/\/$/, '')}/sign/${doc.token}`} target="_blank" rel="noreferrer" className="text-blue-500 underline">Open Link</a> : <span className="text-gray-400">None</span>}</td>
                 </tr>
               ))}
             </tbody>

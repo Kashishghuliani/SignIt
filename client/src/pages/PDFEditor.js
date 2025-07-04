@@ -18,15 +18,14 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   });
 
   const pdfWrapperRef = useRef(null);
-  const pageWrapperRef = useRef(null);
   const token = localStorage.getItem('token');
+  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
   useEffect(() => {
     loadSignatureStyle();
     if (documentId) fetchSignatures();
   }, [documentId]);
 
-  // Reload signature style + reset drag when file changes
   useEffect(() => {
     loadSignatureStyle();
     setDragPos({ x: 100, y: 100 });
@@ -41,8 +40,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const fetchSignatures = async () => {
+    if (!documentId || !token) return;
     try {
-      const res = await axios.get(`http://localhost:5000/api/signatures/${documentId}`, {
+      const res = await axios.get(`${API_URL}/api/signatures/${documentId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSignatures(res.data);
@@ -51,23 +51,18 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     }
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (pageWrapperRef.current) {
-        const rect = pageWrapperRef.current.getBoundingClientRect();
-        if (rect.width && rect.height) {
-          setPdfRenderSize({ width: rect.width, height: rect.height });
-          clearInterval(interval);
-        }
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [fileUrl]);
+  // Use onLoadSuccess on Page to get PDF render size
+  const onPageLoadSuccess = (page) => {
+    const viewport = page.getViewport({ scale: 1 });
+    setPdfRenderSize({ width: viewport.width, height: viewport.height });
+  };
 
-  // Global Drag Listeners
+  // Global drag event handlers
   useEffect(() => {
     const handleMove = (e) => {
       if (!isDragging) return;
+      if (!pdfWrapperRef.current) return;
+
       const rect = pdfWrapperRef.current.getBoundingClientRect();
       let x = e.clientX - rect.left;
       let y = e.clientY - rect.top;
@@ -109,12 +104,13 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     };
 
     try {
-      await axios.post(`http://localhost:5000/api/signatures`, payload, {
+      await axios.post(`${API_URL}/api/signatures`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err);
+      alert('Failed to save signature. Try again.');
     }
   };
 
@@ -123,39 +119,42 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const latestFontSize = parseFloat(localStorage.getItem('fontSize')) || 14;
     const latestFontColor = localStorage.getItem('fontColor') || '#000000';
 
+    if (!latestText.trim()) {
+      alert("Please set your signature style first.");
+      return;
+    }
+
     setSignatureStyle({
       text: latestText,
       fontSize: latestFontSize,
       fontColor: latestFontColor
     });
 
-    if (!latestText.trim()) {
-      alert("Please set your signature style first.");
-      return;
-    }
     setIsDragging(true);
   };
 
   const updateStatus = async (sigId, status, reason = '') => {
     try {
-      await axios.patch(`http://localhost:5000/api/signatures/${sigId}/status`, { status, reason }, {
+      await axios.patch(`${API_URL}/api/signatures/${sigId}/status`, { status, reason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchSignatures();
     } catch (err) {
       console.error('Status Update Error:', err);
+      alert('Failed to update signature status.');
     }
   };
 
   const deleteSignature = async (sigId) => {
     if (!window.confirm('Delete this signature?')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/signatures/${sigId}`, {
+      await axios.delete(`${API_URL}/api/signatures/${sigId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchSignatures();
     } catch (err) {
       console.error('Delete Error:', err);
+      alert('Failed to delete signature.');
     }
   };
 
@@ -165,9 +164,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       className="relative border border-gray-300 bg-white shadow-md mx-auto"
       style={{ width: '600px', height: '800px', marginTop: '20px', position: 'relative' }}
     >
-      <div ref={pageWrapperRef} style={{ display: 'inline-block' }}>
-        <Document file={fileUrl} onLoadSuccess={() => {}}>
-          <Page pageNumber={1} />
+      <div style={{ display: 'inline-block' }}>
+        <Document file={fileUrl}>
+          <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} />
         </Document>
       </div>
 
@@ -175,7 +174,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       {signatures.map((sig) => (
         <div
           key={sig._id}
-          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
+          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow cursor-default ${
             sig.status === 'Signed' ? 'bg-green-600 text-white' :
             sig.status === 'Rejected' ? 'bg-red-500 text-white' :
             'bg-yellow-400 text-black'
@@ -217,10 +216,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       ))}
 
       {/* Draggable Signature */}
-      {pdfRenderSize.width > 0 && pdfRenderSize.height > 0 && (
+      {pdfRenderSize.width > 0 && pdfRenderSize.height > 0 && signatureStyle.text.trim() && (
         <div
           onMouseDown={handleMouseDown}
-          className="absolute cursor-move text-sm font-signature shadow-lg"
+          className="absolute cursor-move text-sm shadow-lg select-none"
           style={{
             top: `${dragPos.y}px`,
             left: `${dragPos.x}px`,
@@ -232,10 +231,12 @@ const PDFEditor = ({ fileUrl, documentId }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             fontWeight: '500',
+            userSelect: 'none',
             zIndex: 9999
           }}
+          title="Drag to place your signature"
         >
-          ✍️ {signatureStyle.text || 'Your Signature'}
+          ✍️ {signatureStyle.text}
         </div>
       )}
     </div>

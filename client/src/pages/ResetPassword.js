@@ -9,7 +9,8 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  const API_URL = 'https://signit-backend-js8l.onrender.com';  // Use your deployed backend
+  // Use environment variable for backend URL
+  const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
   const handleSubmit = async (e) => {
     e.preventDefault();

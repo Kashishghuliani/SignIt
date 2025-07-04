@@ -6,12 +6,15 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const navigate = useNavigate();
 
+  // Use env variable for backend URL
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return alert("Please enter your email");
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      const res = await axios.post(`${BACKEND_URL}/api/auth/forgot-password`, { email });
       alert(res.data.message || "Password reset link sent to your email!");
       navigate('/');
     } catch (err) {

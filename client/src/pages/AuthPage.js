@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'https://signit-backend-js8l.onrender.com';
+
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -10,10 +12,15 @@ const AuthPage = () => {
   const [fullName, setFullName] = useState('');
   const navigate = useNavigate();
 
-  const API_URL = 'https://signit-backend-js8l.onrender.com';  // Your deployed backend
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Basic validation
+    if (!email.trim() || !password.trim() || (isSignUp && !fullName.trim())) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+
     try {
       const payload = { email, password };
       if (isSignUp) payload.name = fullName;
@@ -23,13 +30,16 @@ const AuthPage = () => {
 
       if (isSignUp) {
         alert("Account created successfully! Please sign in.");
-        setIsSignUp(false);  // Switch to login form after signup
+        setIsSignUp(false);
+        // Clear fields after signup
+        setEmail('');
+        setPassword('');
+        setFullName('');
       } else {
         localStorage.setItem('token', res.data.token);
         alert("Logged In Successfully!");
         navigate('/dashboard');
       }
-
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Error occurred. Try again.");
@@ -67,7 +77,7 @@ const AuthPage = () => {
 
           <p className="text-gray-400 text-sm mb-6">or use your email account</p>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-4">
+          <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
             {isSignUp && (
               <input
                 type="text"
@@ -95,6 +105,8 @@ const AuthPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-300 px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
               required
+              minLength={6}
+              title="Password must be at least 6 characters"
             />
 
             {!isSignUp && (
