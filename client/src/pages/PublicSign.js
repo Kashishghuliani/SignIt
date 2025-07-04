@@ -10,7 +10,6 @@ const PublicSign = () => {
   const navigate = useNavigate();
 
   const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-  const FRONTEND_URL = 'https://sign-it-5656.vercel.app';  // Update with your real frontend URL
 
   const [fileUrl, setFileUrl] = useState('');
   const [pdfSize, setPdfSize] = useState({ width: 0, height: 0 });
@@ -30,16 +29,16 @@ const PublicSign = () => {
       try {
         const res = await axios.get(`${API_URL}/api/docs/public/${token}`);
         if (!res.data?.filepath) throw new Error('Invalid file');
-        
-        // Generate frontend-accessible link to the PDF
-        setFileUrl(`${FRONTEND_URL}/uploads/${res.data.filepath.split('/').pop()}`);
+
+        // Load PDF from the backend uploads folder
+        setFileUrl(`${API_URL}/uploads/${res.data.filepath}`);
       } catch (err) {
         console.error(err);
         setMessage('Invalid or expired link');
       }
     };
     fetchDoc();
-  }, [token]);
+  }, [token, API_URL]);
 
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1 });
