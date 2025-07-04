@@ -11,6 +11,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false); // NEW
   const [pdfReady, setPdfReady] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
@@ -113,6 +114,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const handleStart = (e) => {
     if (!signatureStyle.text.trim()) return;
     setIsDragging(true);
+    setHasDragged(false);
     handleMove(e);
   };
 
@@ -126,13 +128,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
     const y = Math.min(Math.max(clientY - rect.top, 0), rect.height);
     setDragPos({ x, y });
+    setHasDragged(true);
   };
 
   const handleEnd = async () => {
-    if (isDragging) {
-      setIsDragging(false);
+    if (isDragging && hasDragged) {
       await saveSignature(dragPos.x, dragPos.y);
     }
+    setIsDragging(false);
+    setHasDragged(false);
   };
 
   const updateStatus = async (sigId, status, reason = '') => {
@@ -150,18 +154,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const deleteSignature = async (sigId) => {
     if (!sigId) {
       alert("Invalid signature ID.");
-      console.warn('Invalid sigId:', sigId);
       return;
     }
-
     const confirm = window.confirm('Delete this signature?');
     if (!confirm) return;
 
     try {
-      const res = await axios.delete(`${API_URL}/api/signatures/${sigId}`, {
+      await axios.delete(`${API_URL}/api/signatures/${sigId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log('Delete response for', sigId, res);
       fetchSignatures();
     } catch (err) {
       console.error('❌ Delete Error:', err.response?.data || err.message);
@@ -192,43 +193,40 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       </div>
 
       {/* Existing Signatures */}
-      {signatures.map(sig => {
-        console.log('Signature entry:', sig);
-        return (
-          <div
-            key={sig._id}
-            className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
-              sig.status === 'Signed' ? 'bg-green-600 text-white' :
-              sig.status === 'Rejected' ? 'bg-red-500 text-white' :
-              'bg-yellow-400 text-black'
-            }`}
-            style={{
-              top: `${sig.y}px`,
-              left: `${sig.x}px`,
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1000
-            }}
+      {signatures.map(sig => (
+        <div
+          key={sig._id}
+          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
+            sig.status === 'Signed' ? 'bg-green-600 text-white' :
+            sig.status === 'Rejected' ? 'bg-red-500 text-white' :
+            'bg-yellow-400 text-black'
+          }`}
+          style={{
+            top: `${sig.y}px`,
+            left: `${sig.x}px`,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000
+          }}
+        >
+          ✍️ {sig.text} ({sig.status})
+          {sig.status === 'Pending' && (
+            <>
+              <button onClick={() => updateStatus(sig._id, 'Signed')} title="Mark as Signed">✔️</button>
+              <button onClick={() => {
+                const reason = prompt('Reason for rejection:') || 'No reason';
+                updateStatus(sig._id, 'Rejected', reason);
+              }} title="Reject">❌</button>
+            </>
+          )}
+          <button 
+            onClick={() => deleteSignature(sig._id)} 
+            title="Delete"
+            style={{ zIndex: 2000 }}
           >
-            ✍️ {sig.text} ({sig.status})
-            {sig.status === 'Pending' && (
-              <>
-                <button onClick={() => updateStatus(sig._id, 'Signed')} title="Mark as Signed">✔️</button>
-                <button onClick={() => {
-                  const reason = prompt('Reason for rejection:') || 'No reason';
-                  updateStatus(sig._id, 'Rejected', reason);
-                }} title="Reject">❌</button>
-              </>
-            )}
-            <button 
-              onClick={() => deleteSignature(sig._id)} 
-              title="Delete"
-              style={{ zIndex: 2000 }}
-            >
-              🗑️
-            </button>
-          </div>
-        );
-      })}
+            🗑️
+          </button>
+        </div>
+      ))}
 
       {/* Floating Signature */}
       {signatureStyle.text.trim() && pdfReady && (
