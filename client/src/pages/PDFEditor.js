@@ -72,29 +72,35 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   useEffect(() => {
-    const handleMove = (e) => {
-      if (!isDragging || !pdfWrapperRef.current) return;
+    const move = (x, y) => {
+      if (!pdfWrapperRef.current) return;
       const rect = pdfWrapperRef.current.getBoundingClientRect();
-      let x = e.clientX - rect.left;
-      let y = e.clientY - rect.top;
-      x = Math.max(0, Math.min(x, rect.width));
-      y = Math.max(0, Math.min(y, rect.height));
-      setDragPos({ x, y });
+      const newX = Math.max(0, Math.min(x - rect.left, rect.width));
+      const newY = Math.max(0, Math.min(y - rect.top, rect.height));
+      setDragPos({ x: newX, y: newY });
     };
 
-    const handleUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        saveSignature();
+    const handleMouseMove = (e) => isDragging && move(e.clientX, e.clientY);
+    const handleMouseUp = () => { if (isDragging) { setIsDragging(false); saveSignature(); } };
+
+    const handleTouchMove = (e) => {
+      if (isDragging && e.touches.length === 1) {
+        move(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
 
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    const handleTouchEnd = () => { if (isDragging) { setIsDragging(false); saveSignature(); } };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging]);
 
@@ -122,6 +128,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const handleMouseDown = () => {
+    const latestText = localStorage.getItem('signatureText') || '';
+    if (!latestText.trim()) {
+      alert("Please set your signature style first.");
+      return;
+    }
+    setIsDragging(true);
+  };
+
+  const handleTouchStart = () => {
     const latestText = localStorage.getItem('signatureText') || '';
     if (!latestText.trim()) {
       alert("Please set your signature style first.");
@@ -171,7 +186,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </Document>
       </div>
 
-      {/* Render Existing Signatures */}
+      {/* Existing Signatures */}
       {signatures.map(sig => (
         <div
           key={sig._id}
@@ -201,10 +216,11 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </div>
       ))}
 
-      {/* Signature Drag Element */}
+      {/* Draggable Signature */}
       {signatureStyle.text.trim() && (
         <div
           onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
           className="absolute cursor-move text-sm shadow-lg select-none"
           style={{
             top: `${dragPos.y}px`,
