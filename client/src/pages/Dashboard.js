@@ -164,7 +164,8 @@ const Dashboard = () => {
     <div className="flex flex-col md:flex-row min-h-screen text-gray-800">
 
       {/* Sidebar */}
-      <div className="md:w-64 w-full bg-gradient-to-b md:bg-gradient-to-b from-red-500 to-red-700 text-white p-6 flex md:flex-col justify-between md:justify-start fixed md:static bottom-0 md:h-auto z-20">
+      <div className="md:w-64 w-full bg-gradient-to-b md:bg-gradient-to-b from-[#c31432] to-[#ff5f5f] text-white p-6 rounded-l-lg ...">
+
         <div>
           <h2 className="text-2xl font-bold mb-6 text-center md:text-left">SignIt</h2>
           <button
@@ -334,3 +335,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

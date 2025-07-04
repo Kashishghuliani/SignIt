@@ -153,7 +153,8 @@ const AuthPage = () => {
         </div>
 
         {/* Right Section Hidden on Mobile */}
-        <div className="hidden md:flex flex-1 flex-col justify-center items-center bg-gradient-to-r from-red-500 to-red-700 text-white p-8 text-center">
+        <div className="hidden md:flex flex-1 flex-col justify-center items-center bg-gradient-to-r from-[#ff5f5f] to-[#c31432] text-white p-8 text-center rounded-r-lg">
+
           <h2 className="text-3xl font-bold mb-4">{isSignUp ? "Welcome to SignIt!" : "SignIt"}</h2>
           <p className="mb-6">
             {isSignUp
