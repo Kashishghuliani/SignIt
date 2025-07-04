@@ -1,33 +1,35 @@
 const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
 
-const FRONTEND_URL = 'https://sign-it-5656.vercel.app';  // ✅ Your deployed frontend
-let tokenStore = {};  // Temporary token storage (use DB in real project)
-
-// Dummy token generator
-const generateToken = () => Math.random().toString(36).substring(2, 15);
+const FRONTEND_URL = 'https://sign-it-5656.vercel.app'; // Your deployed frontend
+const RESET_SECRET = process.env.RESET_SECRET || 'supersecrettoken'; // Keep secret in .env
 
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "Email is required" });
 
-  const token = generateToken();
-  tokenStore[token] = email;  // Store token with email
-
+  // Generate secure token with email, expires in 15 minutes
+  const token = jwt.sign({ email }, RESET_SECRET, { expiresIn: '15m' });
   const resetLink = `${FRONTEND_URL}/reset-password/${token}`;
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'kashishghuliani2004@gmail.com',
-      pass: 'oxofeipkaagjltfx'  
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
     }
   });
 
   const mailOptions = {
-    from: 'kashishghuliani2004@gmail.com',
+    from: process.env.EMAIL_USER,
     to: email,
     subject: 'Password Reset Request',
-    html: `<p>Click below to reset your password:</p><a href="${resetLink}">${resetLink}</a>`
+    html: `
+      <p>You requested a password reset.</p>
+      <p>Click below to reset your password:</p>
+      <a href="${resetLink}">${resetLink}</a>
+      <p>This link expires in 15 minutes.</p>
+    `
   };
 
   try {
@@ -41,18 +43,22 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = (req, res) => {
   const { token, newPassword } = req.body;
-
   if (!token || !newPassword) {
     return res.status(400).json({ message: "Token and new password required" });
   }
 
-  const email = tokenStore[token];
-  if (!email) return res.status(400).json({ message: "Invalid or expired token" });
+  try {
+    const decoded = jwt.verify(token, RESET_SECRET);
+    const email = decoded.email;
 
-  console.log(`Password for ${email} changed to: ${newPassword}`);  // In real app, hash & update DB
-  delete tokenStore[token];  // Remove token after use
+    console.log(`Password for ${email} changed to: ${newPassword}`);
+    // TODO: Hash newPassword and update in DB for real implementation
 
-  res.json({ message: "Password reset successful!" });
+    res.json({ message: "Password reset successful!" });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ message: "Invalid or expired token" });
+  }
 };
 
 module.exports = { forgotPassword, resetPassword };
