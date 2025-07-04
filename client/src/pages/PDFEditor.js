@@ -11,7 +11,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [hasPlaced, setHasPlaced] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
@@ -19,7 +18,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     fontColor: '#000000'
   });
 
-  const pdfWrapperRef = useRef(null);
+  const wrapperRef = useRef(null);
   const token = localStorage.getItem('token');
   const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
@@ -35,15 +34,14 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      if (pdfWrapperRef.current) {
-        const containerWidth = pdfWrapperRef.current.offsetWidth;
-        setPdfRenderSize(prev => ({
-          ...prev,
+      if (wrapperRef.current) {
+        const containerWidth = wrapperRef.current.offsetWidth;
+        setPdfRenderSize({
           width: Math.min(containerWidth, 600),
-        }));
+          height: 0
+        });
       }
     };
-
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -71,7 +69,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1 });
-    const containerWidth = pdfWrapperRef.current?.offsetWidth || 600;
+    const containerWidth = wrapperRef.current?.offsetWidth || 600;
     const scale = containerWidth / viewport.width;
     const scaledViewport = page.getViewport({ scale });
 
@@ -85,7 +83,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const saveSignature = async (x, y) => {
     const { width, height } = pdfRenderSize;
     if (!documentId || !token || !signatureStyle.text.trim() || width === 0 || height === 0) {
-      alert("Missing document or PDF dimensions or signature text.");
+      alert("Missing document, signature, or PDF size.");
       return;
     }
 
@@ -108,29 +106,31 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err.response?.data || err.message);
-      alert('Failed to save signature. See console.');
+      alert('Failed to save signature.');
     }
   };
 
-  const handleMouseDown = () => {
-    if (!hasPlaced && signatureStyle.text.trim()) {
-      setIsDragging(true);
-    }
+  const handleStart = (e) => {
+    if (!signatureStyle.text.trim()) return;
+    setIsDragging(true);
+    handleMove(e);
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDragging || !pdfWrapperRef.current) return;
+  const handleMove = (e) => {
+    if (!isDragging || !wrapperRef.current) return;
 
-    const rect = pdfWrapperRef.current.getBoundingClientRect();
-    const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
-    const y = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+    const y = Math.min(Math.max(clientY - rect.top, 0), rect.height);
     setDragPos({ x, y });
   };
 
-  const handleMouseUp = async () => {
+  const handleEnd = async () => {
     if (isDragging) {
       setIsDragging(false);
-      setHasPlaced(true);
       await saveSignature(dragPos.x, dragPos.y);
     }
   };
@@ -162,11 +162,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   return (
     <div
-      ref={pdfWrapperRef}
-      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
+      ref={wrapperRef}
+      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto touch-none"
       style={{ marginTop: '20px' }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      onMouseDown={handleStart}
+      onMouseMove={handleMove}
+      onMouseUp={handleEnd}
+      onTouchStart={handleStart}
+      onTouchMove={handleMove}
+      onTouchEnd={handleEnd}
     >
       <div className="w-full flex justify-center">
         <Document file={fileUrl}>
@@ -208,10 +212,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </div>
       ))}
 
-      {/* Floating Preview Signature */}
+      {/* Floating Signature */}
       {signatureStyle.text.trim() && pdfReady && (
         <div
-          onMouseDown={handleMouseDown}
           className="absolute text-sm shadow-lg select-none"
           style={{
             top: `${dragPos.y}px`,
@@ -224,10 +227,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             fontWeight: '500',
-            cursor: hasPlaced ? 'default' : 'move',
+            cursor: isDragging ? 'grabbing' : 'grab',
             zIndex: 9999
           }}
-          title="Drag to place your signature"
         >
           ✍️ {signatureStyle.text}
         </div>
