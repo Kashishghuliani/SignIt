@@ -28,10 +28,6 @@ router.post('/send-link', auth, sendSignatureLink);
 router.get('/public/:token', getPublicDocument);
 
 // 🖊️ Publicly sign document using token (public)
-// 🖊️ Public Sign using token
-router.post('/public/sign', publicSign);
-
-
-
+router.post('/public-sign', publicSign);
 
 module.exports = router;
