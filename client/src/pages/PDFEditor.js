@@ -8,8 +8,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 const PDFEditor = ({ fileUrl, documentId }) => {
   const [signatures, setSignatures] = useState([]);
-  const [dragPos, setDragPos] = useState(null); // null until drag starts
-  const [pdfSize, setPdfSize] = useState({ width: 0, height: 0 });
+  const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
+  const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
@@ -21,15 +21,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const token = localStorage.getItem('token');
   const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-  // Load signature style from localStorage
-  const loadSignatureStyle = () => {
-    setSignatureStyle({
-      text: localStorage.getItem('signatureText') || '',
-      fontSize: parseFloat(localStorage.getItem('fontSize')) || 14,
-      fontColor: localStorage.getItem('fontColor') || '#000000'
-    });
-  };
-
   useEffect(() => {
     loadSignatureStyle();
     if (documentId) fetchSignatures();
@@ -37,8 +28,29 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   useEffect(() => {
     loadSignatureStyle();
-    setDragPos(null);
+    setDragPos({ x: 100, y: 100 });
   }, [fileUrl]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (pdfWrapperRef.current) {
+        const containerWidth = pdfWrapperRef.current.offsetWidth;
+        setPdfRenderSize((prev) => ({ ...prev, width: Math.min(containerWidth, 600) }));
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const loadSignatureStyle = () => {
+    setSignatureStyle({
+      text: localStorage.getItem('signatureText') || '',
+      fontSize: parseFloat(localStorage.getItem('fontSize')) || 14,
+      fontColor: localStorage.getItem('fontColor') || '#000000'
+    });
+  };
 
   const fetchSignatures = async () => {
     try {
@@ -52,31 +64,41 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const onPageLoadSuccess = (page) => {
-    const { width, height } = page.getViewport({ scale: 1 });
-    setPdfSize({ width, height });
+    const viewport = page.getViewport({ scale: 1 });
+    const containerWidth = pdfWrapperRef.current?.offsetWidth || 600;
+    const scale = containerWidth / viewport.width;
+
+    const scaledViewport = page.getViewport({ scale });
+    setPdfRenderSize({
+      width: scaledViewport.width,
+      height: scaledViewport.height
+    });
   };
 
-  // Position update on drag
   useEffect(() => {
     const move = (x, y) => {
       if (!pdfWrapperRef.current) return;
       const rect = pdfWrapperRef.current.getBoundingClientRect();
-      const localX = x - rect.left;
-      const localY = y - rect.top;
-      setDragPos({
-        x: Math.max(0, Math.min(localX, rect.width)),
-        y: Math.max(0, Math.min(localY, rect.height))
-      });
+      const newX = Math.max(0, Math.min(x - rect.left, rect.width));
+      const newY = Math.max(0, Math.min(y - rect.top, rect.height));
+      setDragPos({ x: newX, y: newY });
     };
 
     const handleMouseMove = (e) => isDragging && move(e.clientX, e.clientY);
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        saveSignature();
+      }
+    };
+
     const handleTouchMove = (e) => {
       if (isDragging && e.touches.length === 1) {
         move(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
 
-    const endDrag = () => {
+    const handleTouchEnd = () => {
       if (isDragging) {
         setIsDragging(false);
         saveSignature();
@@ -84,41 +106,31 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('touchmove', handleTouchMove);
-    window.addEventListener('touchend', endDrag);
+    window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', endDrag);
+      window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', endDrag);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging]);
 
-  const handleStartDrag = () => {
-    if (!signatureStyle.text.trim()) {
-      alert("Please set your signature style first.");
-      return;
-    }
-    setDragPos({ x: 100, y: 100 }); // Optional: Reset drag start
-    setIsDragging(true);
-  };
-
   const saveSignature = async () => {
-    if (!dragPos || !pdfSize.width || !pdfSize.height) return;
-
-    const xPercent = dragPos.x / pdfSize.width;
-    const yPercent = dragPos.y / pdfSize.height;
-
+    if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
     try {
+      const percentX = dragPos.x / pdfRenderSize.width;
+      const percentY = dragPos.y / pdfRenderSize.height;
+
       await axios.post(`${API_URL}/api/signatures`, {
         documentId,
-        xPercent,
-        yPercent,
+        xPercent: percentX,
+        yPercent: percentY,
         page: 1,
-        renderWidth: pdfSize.width,
-        renderHeight: pdfSize.height,
+        renderWidth: pdfRenderSize.width,
+        renderHeight: pdfRenderSize.height,
         text: signatureStyle.text,
         fontSize: signatureStyle.fontSize,
         fontColor: signatureStyle.fontColor
@@ -126,12 +138,30 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setDragPos(null); // reset position after placing
+      setDragPos({ x: 100, y: 100 }); // ✅ Reset position so next drag starts fresh
       fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err);
       alert('Failed to save signature. Try again.');
     }
+  };
+
+  const handleMouseDown = () => {
+    const latestText = localStorage.getItem('signatureText') || '';
+    if (!latestText.trim()) {
+      alert("Please set your signature style first.");
+      return;
+    }
+    setIsDragging(true);
+  };
+
+  const handleTouchStart = () => {
+    const latestText = localStorage.getItem('signatureText') || '';
+    if (!latestText.trim()) {
+      alert("Please set your signature style first.");
+      return;
+    }
+    setIsDragging(true);
   };
 
   const updateStatus = async (sigId, status, reason = '') => {
@@ -141,6 +171,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       });
       fetchSignatures();
     } catch (err) {
+      console.error('Status Update Error:', err);
       alert('Failed to update signature status.');
     }
   };
@@ -153,6 +184,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       });
       fetchSignatures();
     } catch (err) {
+      console.error('Delete Error:', err);
       alert('Failed to delete signature.');
     }
   };
@@ -160,24 +192,23 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   return (
     <div
       ref={pdfWrapperRef}
-      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px]"
-      style={{ marginTop: 20 }}
+      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
+      style={{ marginTop: '20px' }}
     >
       <div className="w-full flex justify-center">
         <Document file={fileUrl}>
           <Page
             pageNumber={1}
-            width={pdfSize.width}
             onLoadSuccess={onPageLoadSuccess}
+            width={pdfRenderSize.width}
           />
         </Document>
       </div>
 
-      {/* Show saved signatures */}
+      {/* Existing Signatures */}
       {signatures.map(sig => {
-        const x = sig.xPercent * pdfSize.width;
-        const y = sig.yPercent * pdfSize.height;
-
+        const posX = sig.xPercent * pdfRenderSize.width;
+        const posY = sig.yPercent * pdfRenderSize.height;
         return (
           <div
             key={sig._id}
@@ -187,8 +218,8 @@ const PDFEditor = ({ fileUrl, documentId }) => {
               'bg-yellow-400 text-black'
             }`}
             style={{
-              top: `${y}px`,
-              left: `${x}px`,
+              top: `${posY}px`,
+              left: `${posX}px`,
               transform: 'translate(-50%, -50%)',
               zIndex: 100
             }}
@@ -209,10 +240,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       })}
 
       {/* Draggable Signature */}
-      {signatureStyle.text && dragPos && (
+      {signatureStyle.text.trim() && (
         <div
-          onMouseDown={handleStartDrag}
-          onTouchStart={handleStartDrag}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
           className="absolute cursor-move text-sm shadow-lg select-none"
           style={{
             top: `${dragPos.y}px`,
