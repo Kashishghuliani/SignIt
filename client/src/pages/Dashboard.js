@@ -26,8 +26,8 @@ const Dashboard = () => {
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
-  // Use environment variable for backend URL
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+  const FRONTEND_URL = 'https://sign-it-5656.vercel.app'; // Update with your actual frontend domain
 
   useEffect(() => {
     if (!token) navigate('/login');
@@ -163,7 +163,6 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen text-gray-800">
 
-      {/* Sidebar */}
       <div className="w-64 bg-gradient-to-b from-red-500 to-pink-500 text-white flex flex-col justify-between p-4 shadow-lg z-10">
         <div>
           <h2 className="text-2xl font-bold mb-6">SignIt</h2>
@@ -183,7 +182,6 @@ const Dashboard = () => {
         <button onClick={logout} className="bg-white text-red-500 font-bold px-4 py-2 rounded">Logout</button>
       </div>
 
-      {/* Main Area */}
       <div className="flex-1 p-6 relative z-0">
         <h1 className="text-3xl font-bold mb-6">My PDF Dashboard</h1>
 
@@ -207,7 +205,15 @@ const Dashboard = () => {
                   <td className="border px-4 py-2 text-green-600 text-center">{doc.signatureSummary?.signed || 0}</td>
                   <td className="border px-4 py-2 text-yellow-600 text-center">{doc.signatureSummary?.pending || 0}</td>
                   <td className="border px-4 py-2 text-red-500 text-center">{doc.signatureSummary?.rejected || 0}</td>
-                  <td className="border px-4 py-2 text-center">{doc.token ? <a href={`${BACKEND_URL.replace(/\/$/, '')}/sign/${doc.token}`} target="_blank" rel="noreferrer" className="text-blue-500 underline">Open Link</a> : <span className="text-gray-400">None</span>}</td>
+                  <td className="border px-4 py-2 text-center">
+                    {doc.token ? (
+                      <a href={`${FRONTEND_URL}/sign/${doc.token}`} target="_blank" rel="noreferrer" className="text-blue-500 underline">
+                        Open Link
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -217,7 +223,6 @@ const Dashboard = () => {
         {selectedPdf && <PDFEditor fileUrl={selectedPdf} documentId={selectedDocId} />}
       </div>
 
-      {/* Signature Style Modal */}
       {showStyleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-80 text-center">
