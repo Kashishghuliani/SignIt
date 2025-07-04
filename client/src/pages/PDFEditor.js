@@ -10,6 +10,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [signatures, setSignatures] = useState([]);
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
+  const [isPlacing, setIsPlacing] = useState(false); // Controls floating sig
   const [isSaving, setIsSaving] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
@@ -48,34 +49,29 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   }, []);
 
   useEffect(() => {
-    // Start auto-follow when component mounts
     const move = (x, y) => {
-      if (!pdfWrapperRef.current) return;
+      if (!pdfWrapperRef.current || isSaving) return;
+
       const rect = pdfWrapperRef.current.getBoundingClientRect();
-      setDragPos({
-        x: Math.max(0, Math.min(x - rect.left, rect.width)),
-        y: Math.max(0, Math.min(y - rect.top, rect.height))
-      });
+      const newX = Math.max(0, Math.min(x - rect.left, rect.width));
+      const newY = Math.max(0, Math.min(y - rect.top, rect.height));
+
+      setDragPos({ x: newX, y: newY });
+      setIsPlacing(true); // show the floating signature
+      saveSignature(newX, newY); // place immediately
     };
 
     const handleMouseMove = (e) => move(e.clientX, e.clientY);
     const handleTouchMove = (e) => move(e.touches[0].clientX, e.touches[0].clientY);
 
-    const handleMouseUp = () => saveSignature();
-    const handleTouchEnd = () => saveSignature();
-
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('touchmove', handleTouchMove);
-    window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [pdfWrapperRef.current, signatureStyle, dragPos]);
+  }, [pdfWrapperRef.current, signatureStyle]);
 
   const loadSignatureStyle = () => {
     setSignatureStyle({
@@ -109,7 +105,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     });
   };
 
-  const saveSignature = async () => {
+  const saveSignature = async (x, y) => {
     if (isSaving || !signatureStyle.text.trim()) return;
 
     const { width, height } = pdfRenderSize;
@@ -121,8 +117,8 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const payload = {
       documentId,
       page: 1,
-      x: dragPos.x,
-      y: dragPos.y,
+      x,
+      y,
       renderWidth: width,
       renderHeight: height,
       text: signatureStyle.text,
@@ -135,12 +131,13 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       await axios.post(`${API_URL}/api/signatures`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      fetchSignatures(); // Refresh UI
+      fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err.response?.data || err.message);
       alert('Failed to save signature. See console.');
     } finally {
       setIsSaving(false);
+      setTimeout(() => setIsPlacing(false), 100); // hide floating sig
     }
   };
 
@@ -170,7 +167,11 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   return (
-    <div ref={pdfWrapperRef} className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto" style={{ marginTop: '20px' }}>
+    <div
+      ref={pdfWrapperRef}
+      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
+      style={{ marginTop: '20px' }}
+    >
       <div className="w-full flex justify-center">
         <Document file={fileUrl}>
           <Page
@@ -212,7 +213,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       ))}
 
       {/* Floating Signature */}
-      {signatureStyle.text.trim() && (
+      {signatureStyle.text.trim() && isPlacing && (
         <div
           className="absolute cursor-none text-sm shadow-lg select-none"
           style={{
@@ -229,7 +230,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
             zIndex: 9999,
             pointerEvents: 'none'
           }}
-          title="Move your mouse to place the signature"
+          title="Signature Placing"
         >
           ✍️ {signatureStyle.text}
         </div>
