@@ -108,39 +108,44 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   }, [isDragging]);
 
   const saveSignature = async () => {
-    if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
+  if (isSaving) return; // 🛑 Don't allow another save while one is in progress
+  if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
 
-    const { width, height } = pdfRenderSize;
-    if (!documentId || !token || width === 0 || height === 0) {
-      alert("Missing document or PDF dimensions.");
-      return;
-    }
+  const { width, height } = pdfRenderSize;
+  if (!documentId || !token || width === 0 || height === 0) {
+    alert("Missing document or PDF dimensions.");
+    return;
+  }
 
-    const payload = {
-      documentId,
-      page: 1,
-      x: dragPos.x,
-      y: dragPos.y,
-      renderWidth: width,
-      renderHeight: height,
-      text: signatureStyle.text,
-      fontSize: signatureStyle.fontSize,
-      fontColor: signatureStyle.fontColor
-    };
-
-    console.log("✅ Saving payload:", payload);
-
-    try {
-      await axios.post(`${API_URL}/api/signatures`, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      fetchSignatures();
-    } catch (err) {
-      console.error('❌ Save Error:', err.response?.data || err.message);
-      alert('Failed to save signature. See console.');
-    }
+  const payload = {
+    documentId,
+    page: 1,
+    x: dragPos.x,
+    y: dragPos.y,
+    renderWidth: width,
+    renderHeight: height,
+    text: signatureStyle.text,
+    fontSize: signatureStyle.fontSize,
+    fontColor: signatureStyle.fontColor
   };
+
+  console.log("✅ Saving payload:", payload);
+  setIsSaving(true); // 🟡 Start saving
+
+  try {
+    await axios.post(`${API_URL}/api/signatures`, payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    fetchSignatures();
+  } catch (err) {
+    console.error('❌ Save Error:', err.response?.data || err.message);
+    alert('Failed to save signature. See console.');
+  } finally {
+    setIsSaving(false); // ✅ Reset flag after save attempt
+  }
+};
+
 
   const handleStart = () => {
     if (!signatureStyle.text.trim()) {
