@@ -56,7 +56,13 @@ exports.finalizeDocument = async (req, res) => {
     const document = await Document.findById(documentId);
     if (!document) return res.status(404).json({ message: "Document not found" });
 
-    const pdfPath = path.join(__dirname, '../uploads/', document.filepath);
+    const pdfRelativePath = document.filepath.replace(/^\/?uploads[\/\\]?/, ''); // Remove possible double uploads
+    const pdfPath = path.join(__dirname, '../uploads', pdfRelativePath);
+
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ message: "Original PDF file not found on server." });
+    }
+
     const pdfDoc = await PDFDocument.load(fs.readFileSync(pdfPath));
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const signatures = await Signature.find({ documentId, status: 'Signed' });
@@ -79,20 +85,25 @@ exports.finalizeDocument = async (req, res) => {
       }
     });
 
-    const signedPath = path.join(__dirname, '../uploads/', `signed-${Date.now()}.pdf`);
-    fs.writeFileSync(signedPath, await pdfDoc.save());
+    const signedPdfBuffer = await pdfDoc.save();
+    const signedFilename = `signed-${Date.now()}.pdf`;
+    const signedPath = path.join(__dirname, '../uploads', signedFilename);
+
+    fs.writeFileSync(signedPath, signedPdfBuffer);
 
     logAction({ documentId, action: "Final PDF Generated", user: req.userName || "Unknown", email: req.userEmail || "-", ip: req.ip });
+
     res.json({
-  message: "Final signed PDF generated",
-  signedPdfUrl: `${process.env.REACT_APP_BACKEND_URL}/uploads/${path.basename(signedPath)}`
-});
+      message: "Final signed PDF generated",
+      signedPdfUrl: `${process.env.REACT_APP_BACKEND_URL}/uploads/${signedFilename}`
+    });
 
   } catch (err) {
     console.error("Finalize Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // Delete Signature
 exports.deleteSignature = async (req, res) => {
