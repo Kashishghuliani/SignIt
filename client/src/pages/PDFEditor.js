@@ -61,7 +61,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       const res = await axios.get(`${API_URL}/api/signatures/${documentId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setSignatures(res.data);
+      setSignatures(res.data || []);
     } catch (err) {
       console.error('❌ Failed to fetch signatures:', err);
     }
@@ -148,14 +148,20 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const deleteSignature = async (sigId) => {
-    if (!window.confirm('Delete this signature?')) return;
+    if (!sigId) {
+      alert("Invalid signature ID.");
+      return;
+    }
+    const confirm = window.confirm('Delete this signature?');
+    if (!confirm) return;
+
     try {
       await axios.delete(`${API_URL}/api/signatures/${sigId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchSignatures();
     } catch (err) {
-      console.error('Delete Error:', err);
+      console.error('Delete Error:', err.response?.data || err.message);
       alert('Failed to delete signature.');
     }
   };
