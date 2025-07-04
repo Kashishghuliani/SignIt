@@ -35,7 +35,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const handleResize = () => {
       if (pdfWrapperRef.current) {
         const containerWidth = pdfWrapperRef.current.offsetWidth;
-        setPdfRenderSize({ width: Math.min(containerWidth, 600), height: pdfRenderSize.height });
+        setPdfRenderSize((prev) => ({
+          ...prev,
+          width: Math.min(containerWidth, 600),
+        }));
       }
     };
 
@@ -104,47 +107,40 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     };
   }, [isDragging]);
 
-   
-   
-   const saveSignature = async () => {
-  if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
+  const saveSignature = async () => {
+    if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
 
-  const { width, height } = pdfRenderSize;
-  if (!documentId || !token || width === 0 || height === 0) {
-    alert("Missing document or PDF dimensions.");
-    return;
-  }
+    const { width, height } = pdfRenderSize;
+    if (!documentId || !token || width === 0 || height === 0) {
+      alert("Missing document or PDF dimensions.");
+      return;
+    }
 
-  // Calculate absolute position instead of percentages
-  const absX = dragPos.x;
-  const absY = dragPos.y;
+    const payload = {
+      documentId,
+      page: 1,
+      x: dragPos.x,
+      y: dragPos.y,
+      renderWidth: width,
+      renderHeight: height,
+      text: signatureStyle.text,
+      fontSize: signatureStyle.fontSize,
+      fontColor: signatureStyle.fontColor
+    };
 
-  const payload = {
-    documentId,
-    page: 1,
-    x: absX,
-    y: absY,
-    renderWidth: width,
-    renderHeight: height,
-    text: signatureStyle.text,
-    fontSize: signatureStyle.fontSize,
-    fontColor: signatureStyle.fontColor
+    console.log("✅ Saving payload:", payload);
+
+    try {
+      await axios.post(`${API_URL}/api/signatures`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDragPos({ x: 100, y: 100 }); // Reset for next signature
+      fetchSignatures();
+    } catch (err) {
+      console.error('❌ Save Error:', err.response?.data || err.message);
+      alert('Failed to save signature. See console.');
+    }
   };
-
-  console.log("✅ Saving payload:", payload);
-
-  try {
-    await axios.post(`${API_URL}/api/signatures`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setDragPos({ x: 100, y: 100 });
-    fetchSignatures();
-  } catch (err) {
-    console.error('❌ Save Error:', err.response?.data || err.message);
-    alert('Failed to save signature. See console.');
-  }
-};
-
 
   const handleStart = () => {
     if (!signatureStyle.text.trim()) {
@@ -191,10 +187,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </Document>
       </div>
 
-      {/* Existing Signatures */}
+      {/* Existing Signatures (render using absolute x/y) */}
       {signatures.map(sig => {
-        const posX = sig.xPercent * pdfRenderSize.width;
-        const posY = sig.yPercent * pdfRenderSize.height;
+        const posX = sig.x;
+        const posY = sig.y;
         return (
           <div
             key={sig._id}
