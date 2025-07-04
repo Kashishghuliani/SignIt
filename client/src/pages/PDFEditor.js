@@ -107,10 +107,13 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const saveSignature = async () => {
     if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
     try {
+      const percentX = dragPos.x / pdfRenderSize.width;
+      const percentY = dragPos.y / pdfRenderSize.height;
+
       await axios.post(`${API_URL}/api/signatures`, {
         documentId,
-        x: dragPos.x,
-        y: dragPos.y,
+        xPercent: percentX,
+        yPercent: percentY,
         page: 1,
         renderWidth: pdfRenderSize.width,
         renderHeight: pdfRenderSize.height,
@@ -120,6 +123,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err);
@@ -187,34 +191,38 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       </div>
 
       {/* Existing Signatures */}
-      {signatures.map(sig => (
-        <div
-          key={sig._id}
-          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
-            sig.status === 'Signed' ? 'bg-green-600 text-white' :
-            sig.status === 'Rejected' ? 'bg-red-500 text-white' :
-            'bg-yellow-400 text-black'
-          }`}
-          style={{
-            top: `${sig.y}px`,
-            left: `${sig.x}px`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 100
-          }}
-        >
-          ✍️ {sig.text} ({sig.status})
-          {sig.status === 'Pending' && (
-            <>
-              <button onClick={() => updateStatus(sig._id, 'Signed')} title="Mark as Signed">✔️</button>
-              <button onClick={() => {
-                const reason = prompt('Reason for rejection:') || 'No reason';
-                updateStatus(sig._id, 'Rejected', reason);
-              }} title="Reject">❌</button>
-            </>
-          )}
-          <button onClick={() => deleteSignature(sig._id)} title="Delete">🗑️</button>
-        </div>
-      ))}
+      {signatures.map(sig => {
+        const posX = sig.xPercent * pdfRenderSize.width;
+        const posY = sig.yPercent * pdfRenderSize.height;
+        return (
+          <div
+            key={sig._id}
+            className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
+              sig.status === 'Signed' ? 'bg-green-600 text-white' :
+              sig.status === 'Rejected' ? 'bg-red-500 text-white' :
+              'bg-yellow-400 text-black'
+            }`}
+            style={{
+              top: `${posY}px`,
+              left: `${posX}px`,
+              transform: 'translate(-50%, -50%)',
+              zIndex: 100
+            }}
+          >
+            ✍️ {sig.text} ({sig.status})
+            {sig.status === 'Pending' && (
+              <>
+                <button onClick={() => updateStatus(sig._id, 'Signed')} title="Mark as Signed">✔️</button>
+                <button onClick={() => {
+                  const reason = prompt('Reason for rejection:') || 'No reason';
+                  updateStatus(sig._id, 'Rejected', reason);
+                }} title="Reject">❌</button>
+              </>
+            )}
+            <button onClick={() => deleteSignature(sig._id)} title="Delete">🗑️</button>
+          </div>
+        );
+      })}
 
       {/* Draggable Signature */}
       {signatureStyle.text.trim() && (
