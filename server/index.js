@@ -23,9 +23,9 @@ app.use(cors({
 
 // Use helmet with COOP and COEP headers enabled
 app.use(helmet({
-  crossOriginOpenerPolicy: { policy: "same-origin" },
-  crossOriginEmbedderPolicy: true
+  crossOriginOpenerPolicy: false
 }));
+
 
 app.use(express.json());
 

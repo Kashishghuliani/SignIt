@@ -58,21 +58,22 @@ const AuthPage = () => {
 
           <div className="flex gap-4 mb-6">
             <GoogleLogin
-              onSuccess={async (credentialResponse) => {
-                try {
-                  const res = await axios.post(`${API_URL}/api/auth/google`, {
-                    credential: credentialResponse.credential
-                  });
-                  localStorage.setItem('token', res.data.token);
-                  alert("Google Login Successful!");
-                  navigate('/dashboard');
-                } catch (err) {
-                  console.error(err);
-                  alert("Google Login Failed");
-                }
-              }}
-              onError={() => alert("Google Login Failed")}
-            />
+  onSuccess={async (credentialResponse) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/google`, {
+        credential: credentialResponse.credential
+      });
+      localStorage.setItem('token', res.data.token);
+      alert("Google Login Successful!");
+      navigate('/dashboard');
+    } catch (err) {
+      console.error(err);
+      alert("Google Login Failed");
+    }
+  }}
+  onError={() => alert("Google Login Failed")}
+/>
+
           </div>
 
           <p className="text-gray-400 text-sm mb-6">or use your email account</p>
