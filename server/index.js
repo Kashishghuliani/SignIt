@@ -21,14 +21,20 @@ const allowedOrigins = [
   'http://localhost:3000'        // Local testing
 ];
 
-// Enable CORS with credentials
+// Enable CORS with dynamic origin check
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
 // Helmet with safer COOP/COEP configuration
-app.use(helmet());
+app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 
 // Allow JSON parsing
 app.use(express.json());
