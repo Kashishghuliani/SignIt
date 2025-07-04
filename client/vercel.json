@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/sign/:path*", "destination": "/" },
+    { "source": "/audit/:path*", "destination": "/" }
+  ]
+}
