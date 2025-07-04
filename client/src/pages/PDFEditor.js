@@ -153,11 +153,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     }
   };
 
-  const handleStart = (e) => {
-    e.preventDefault(); // Prevent selection or double events
-    if (!signatureStyle.text.trim() || isSaving) return;
-    setIsDragging(true);
-  };
+  const handleStart = () => {
+  if (!signatureStyle.text.trim() || isSaving) return;
+  setIsDragging(true);
+};
 
   const updateStatus = async (sigId, status, reason = '') => {
     try {
@@ -229,26 +228,33 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       {/* Draggable Signature */}
       {signatureStyle.text.trim() && (
         <div
-          onMouseDown={handleStart}
-          onTouchStart={handleStart}
-          className="absolute cursor-move text-sm shadow-lg select-none"
-          style={{
-            top: `${dragPos.y}px`,
-            left: `${dragPos.x}px`,
-            transform: 'translate(-50%, -50%)',
-            color: signatureStyle.fontColor,
-            fontSize: `${signatureStyle.fontSize}px`,
-            background: 'rgba(255,255,255,0.7)',
-            padding: '4px 8px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            fontWeight: '500',
-            zIndex: 9999
-          }}
-          title="Drag to place your signature"
-        >
-          ✍️ {signatureStyle.text}
-        </div>
+  onMouseDown={(e) => {
+    e.preventDefault(); // Prevent text selection or click conflict
+    handleStart();
+  }}
+  onTouchStart={(e) => {
+    e.preventDefault(); // For mobile
+    handleStart();
+  }}
+  className="absolute cursor-move text-sm shadow-lg select-none"
+  style={{
+    top: `${dragPos.y}px`,
+    left: `${dragPos.x}px`,
+    transform: 'translate(-50%, -50%)',
+    color: signatureStyle.fontColor,
+    fontSize: `${signatureStyle.fontSize}px`,
+    background: 'rgba(255,255,255,0.7)',
+    padding: '4px 8px',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    fontWeight: '500',
+    zIndex: 9999
+  }}
+  title="Drag to place your signature"
+>
+  ✍️ {signatureStyle.text}
+</div>
+
       )}
     </div>
   );
