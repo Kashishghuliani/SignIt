@@ -31,6 +31,19 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     setDragPos({ x: 100, y: 100 });
   }, [fileUrl]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (pdfWrapperRef.current) {
+        const containerWidth = pdfWrapperRef.current.offsetWidth;
+        setPdfRenderSize((prev) => ({ ...prev, width: Math.min(containerWidth, 600) }));
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const loadSignatureStyle = () => {
     setSignatureStyle({
       text: localStorage.getItem('signatureText') || '',
@@ -40,7 +53,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const fetchSignatures = async () => {
-    if (!documentId || !token) return;
     try {
       const res = await axios.get(`${API_URL}/api/signatures/${documentId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -53,13 +65,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1 });
-    setPdfRenderSize({ width: viewport.width, height: viewport.height });
+    setPdfRenderSize(prev => ({
+      ...prev,
+      height: viewport.height
+    }));
   };
 
   useEffect(() => {
     const handleMove = (e) => {
       if (!isDragging || !pdfWrapperRef.current) return;
-
       const rect = pdfWrapperRef.current.getBoundingClientRect();
       let x = e.clientX - rect.left;
       let y = e.clientY - rect.top;
@@ -82,26 +96,22 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [isDragging, dragPos]);
+  }, [isDragging]);
 
   const saveSignature = async () => {
-    if (!documentId || !token) return;
     if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
-
-    const payload = {
-      documentId,
-      x: dragPos.x,
-      y: dragPos.y,
-      page: 1,
-      renderWidth: parseFloat(pdfRenderSize.width),
-      renderHeight: parseFloat(pdfRenderSize.height),
-      text: signatureStyle.text.trim(),
-      fontSize: signatureStyle.fontSize,
-      fontColor: signatureStyle.fontColor
-    };
-
     try {
-      await axios.post(`${API_URL}/api/signatures`, payload, {
+      await axios.post(`${API_URL}/api/signatures`, {
+        documentId,
+        x: dragPos.x,
+        y: dragPos.y,
+        page: 1,
+        renderWidth: pdfRenderSize.width,
+        renderHeight: pdfRenderSize.height,
+        text: signatureStyle.text,
+        fontSize: signatureStyle.fontSize,
+        fontColor: signatureStyle.fontColor
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchSignatures();
@@ -113,20 +123,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   const handleMouseDown = () => {
     const latestText = localStorage.getItem('signatureText') || '';
-    const latestFontSize = parseFloat(localStorage.getItem('fontSize')) || 14;
-    const latestFontColor = localStorage.getItem('fontColor') || '#000000';
-
     if (!latestText.trim()) {
       alert("Please set your signature style first.");
       return;
     }
-
-    setSignatureStyle({
-      text: latestText,
-      fontSize: latestFontSize,
-      fontColor: latestFontColor
-    });
-
     setIsDragging(true);
   };
 
@@ -158,27 +158,24 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   return (
     <div
       ref={pdfWrapperRef}
-      className="relative border border-gray-300 bg-white shadow-md mx-auto"
-      style={{
-        width: '100%',
-        maxWidth: '600px',
-        height: 'auto',
-        marginTop: '20px',
-        position: 'relative',
-        overflow: 'hidden'
-      }}
+      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
+      style={{ marginTop: '20px' }}
     >
-      <div className="w-full">
+      <div className="w-full flex justify-center">
         <Document file={fileUrl}>
-          <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} width={pdfRenderSize.width > 0 ? pdfRenderSize.width : 600} />
+          <Page
+            pageNumber={1}
+            onLoadSuccess={onPageLoadSuccess}
+            width={pdfRenderSize.width}
+          />
         </Document>
       </div>
 
-      {/* Existing Signatures */}
-      {signatures.map((sig) => (
+      {/* Render Existing Signatures */}
+      {signatures.map(sig => (
         <div
           key={sig._id}
-          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow cursor-default ${
+          className={`absolute px-2 py-1 rounded-full text-xs flex items-center gap-2 shadow ${
             sig.status === 'Signed' ? 'bg-green-600 text-white' :
             sig.status === 'Rejected' ? 'bg-red-500 text-white' :
             'bg-yellow-400 text-black'
@@ -191,23 +188,21 @@ const PDFEditor = ({ fileUrl, documentId }) => {
           }}
         >
           ✍️ {sig.text} ({sig.status})
-
           {sig.status === 'Pending' && (
             <>
-              <button onClick={() => updateStatus(sig._id, 'Signed')} className="ml-1 text-white hover:scale-110" title="Mark as Signed">✔️</button>
+              <button onClick={() => updateStatus(sig._id, 'Signed')} title="Mark as Signed">✔️</button>
               <button onClick={() => {
                 const reason = prompt('Reason for rejection:') || 'No reason';
                 updateStatus(sig._id, 'Rejected', reason);
-              }} className="ml-1 text-white hover:scale-110" title="Reject">❌</button>
+              }} title="Reject">❌</button>
             </>
           )}
-
-          <button onClick={() => deleteSignature(sig._id)} className="ml-1 text-white hover:scale-110" title="Delete">🗑️</button>
+          <button onClick={() => deleteSignature(sig._id)} title="Delete">🗑️</button>
         </div>
       ))}
 
-      {/* Draggable Signature */}
-      {pdfRenderSize.width > 0 && pdfRenderSize.height > 0 && signatureStyle.text.trim() && (
+      {/* Signature Drag Element */}
+      {signatureStyle.text.trim() && (
         <div
           onMouseDown={handleMouseDown}
           className="absolute cursor-move text-sm shadow-lg select-none"
@@ -217,12 +212,11 @@ const PDFEditor = ({ fileUrl, documentId }) => {
             transform: 'translate(-50%, -50%)',
             color: signatureStyle.fontColor,
             fontSize: `${signatureStyle.fontSize}px`,
-            padding: '4px 8px',
             background: 'rgba(255,255,255,0.7)',
+            padding: '4px 8px',
             border: '1px solid #ccc',
             borderRadius: '4px',
             fontWeight: '500',
-            userSelect: 'none',
             zIndex: 9999
           }}
           title="Drag to place your signature"

@@ -25,9 +25,8 @@ const Dashboard = () => {
 
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
-
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-  const FRONTEND_URL = 'https://sign-it-5656.vercel.app'; // Update with your actual frontend domain
+  const FRONTEND_URL = 'https://sign-it-5656.vercel.app';
 
   useEffect(() => {
     if (!token) navigate('/login');
@@ -164,71 +163,53 @@ const Dashboard = () => {
     <div className="flex flex-col md:flex-row min-h-screen text-gray-800">
 
       {/* Sidebar */}
-      <div className="md:w-64 w-full bg-gradient-to-b md:bg-gradient-to-b from-[#c31432] to-[#ff5f5f] text-white p-6 rounded-l-lg ...">
-
+      <div className="md:w-64 w-full bg-gradient-to-b from-[#c31432] to-[#ff5f5f] text-white p-6 flex flex-col justify-between">
         <div>
           <h2 className="text-2xl font-bold mb-6 text-center md:text-left">SignIt</h2>
           <button
-            className="block w-full md:w-auto text-left mb-4 hover:bg-white hover:text-red-600 px-3 py-2 rounded transition"
+            className="block w-full text-left mb-4 hover:bg-white hover:text-red-600 px-3 py-2 rounded transition"
             onClick={fetchDocuments}
           >
             All Documents
           </button>
+
           <div className="mt-6 border-t border-red-300 pt-4">
             <h3 className="font-semibold text-lg mb-3 text-center md:text-left">Quick Actions</h3>
-            <button
-              onClick={viewPdf}
-              disabled={!selectedDoc}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaEye /> Preview
-            </button>
-            <button
-              onClick={() => setShowStyleModal(true)}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaPaintBrush /> Signature Style
-            </button>
-            <button
-              onClick={sendPublicLink}
-              disabled={!selectedDoc}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaPaperPlane /> Send Link
-            </button>
-            <button
-              onClick={finalizePdf}
-              disabled={!selectedDoc}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaFilePdf /> Download Signed
-            </button>
-            <button
-              onClick={viewAuditTrail}
-              disabled={!selectedDoc}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaClipboardList /> Audit Trail
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={!selectedDoc}
-              className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full md:w-auto justify-center md:justify-start"
-            >
-              <FaTrash /> Delete
-            </button>
+            {[{
+              icon: <FaEye />, label: 'Preview', onClick: viewPdf, disabled: !selectedDoc
+            }, {
+              icon: <FaPaintBrush />, label: 'Signature Style', onClick: () => setShowStyleModal(true)
+            }, {
+              icon: <FaPaperPlane />, label: 'Send Link', onClick: sendPublicLink, disabled: !selectedDoc
+            }, {
+              icon: <FaFilePdf />, label: 'Download Signed', onClick: finalizePdf, disabled: !selectedDoc
+            }, {
+              icon: <FaClipboardList />, label: 'Audit Trail', onClick: viewAuditTrail, disabled: !selectedDoc
+            }, {
+              icon: <FaTrash />, label: 'Delete', onClick: handleDelete, disabled: !selectedDoc
+            }].map(({ icon, label, onClick, disabled = false }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                disabled={disabled}
+                className="flex items-center gap-2 mb-3 px-2 py-1 hover:bg-white hover:text-red-600 disabled:opacity-50 rounded transition w-full justify-center md:justify-start"
+              >
+                {icon} {label}
+              </button>
+            ))}
           </div>
         </div>
+
         <button
           onClick={logout}
-          className="bg-white text-red-600 font-bold px-4 py-2 rounded w-full md:w-auto mt-4 md:mt-0"
+          className="bg-white text-red-600 font-bold px-4 py-2 rounded mt-6 w-full"
         >
           Logout
         </button>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 p-6">
+      <div className="flex-1 p-6 overflow-auto">
         <h1 className="text-3xl font-bold mb-6 text-center md:text-left">My PDF Dashboard</h1>
 
         <div
@@ -250,7 +231,7 @@ const Dashboard = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full border text-sm">
+          <table className="min-w-full border text-sm table-auto">
             <thead>
               <tr>
                 <th className="border px-4 py-2">Filename</th>
@@ -291,6 +272,7 @@ const Dashboard = () => {
         {selectedPdf && <PDFEditor fileUrl={selectedPdf} documentId={selectedDocId} />}
       </div>
 
+      {/* Signature Style Modal */}
       {showStyleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-80 text-center">
@@ -335,4 +317,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
