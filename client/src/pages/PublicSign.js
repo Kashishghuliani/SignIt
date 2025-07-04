@@ -17,6 +17,7 @@ const PublicSign = () => {
 
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [signatureText, setSignatureText] = useState('');
   const [fontSize, setFontSize] = useState(20);
@@ -54,33 +55,45 @@ const PublicSign = () => {
         setContainerWidth(wrapperRef.current.offsetWidth);
       }
     };
-
-    updateWidth(); // Initial
+    updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
-  // Handle dragging the signature
-  const handleMouseDown = () => {
-    if (!placed && signatureText.trim()) setIsDragging(true);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging || !wrapperRef.current) return;
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
-    const y = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
-    setDragPos({ x, y });
-  };
-
-  const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      setPlaced(true);
+  // Start dragging
+  const handleStart = (e) => {
+    if (!placed && signatureText.trim()) {
+      setIsDragging(true);
+      setHasDragged(false);
+      handleMove(e);
     }
   };
 
-  // Handle final sign submission
+  // Handle drag move (desktop + mobile)
+  const handleMove = (e) => {
+    if (!isDragging || !wrapperRef.current) return;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+    const y = Math.min(Math.max(clientY - rect.top, 0), rect.height);
+
+    setDragPos({ x, y });
+    setHasDragged(true);
+  };
+
+  // Finish drag
+  const handleEnd = () => {
+    if (isDragging && hasDragged) {
+      setPlaced(true);
+    }
+    setIsDragging(false);
+    setHasDragged(false);
+  };
+
+  // Submit the signature
   const handleSign = async () => {
     if (pdfSize.width === 0 || pdfSize.height === 0 || !signatureText.trim()) {
       return alert('Please enter your name and wait for the PDF to load.');
@@ -164,13 +177,14 @@ const PublicSign = () => {
         {fileUrl && (
           <div
             ref={wrapperRef}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            onMouseDown={handleStart}
+            onMouseMove={handleMove}
+            onMouseUp={handleEnd}
+            onTouchStart={handleStart}
+            onTouchMove={handleMove}
+            onTouchEnd={handleEnd}
             className="border mx-auto relative overflow-hidden bg-white shadow mb-6 w-full"
-            style={{
-              maxWidth: '100%',
-              // Remove minHeight to let it scale naturally
-            }}
+            style={{ maxWidth: '100%' }}
           >
             <Document file={fileUrl}>
               <Page
@@ -182,7 +196,6 @@ const PublicSign = () => {
 
             {pdfSize.width > 0 && signatureText.trim() && (
               <div
-                onMouseDown={handleMouseDown}
                 style={{
                   position: 'absolute',
                   top: `${dragPos.y}px`,
@@ -192,7 +205,9 @@ const PublicSign = () => {
                   fontWeight: 'bold',
                   cursor: placed ? 'default' : 'move',
                   transform: 'translate(-50%, -50%)',
-                  zIndex: 200
+                  zIndex: 200,
+                  userSelect: 'none',
+                  touchAction: 'none'
                 }}
               >
                 {signatureText.trim()}
@@ -210,7 +225,6 @@ const PublicSign = () => {
             {isSubmitting ? 'Signing...' : 'Confirm & Sign Document'}
           </button>
         )}
-
       </div>
     </div>
   );
