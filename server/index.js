@@ -17,7 +17,7 @@ const app = express();
 
 // Enable CORS with credentials (adjust origin to your frontend URL)
 app.use(cors({
-  origin: 'https://sign-it-5656.vercel.app/', // replace with your actual frontend URL
+  origin: 'https://sign-it-5656.vercel.app', // replace with your actual frontend URL
   credentials: true,
 }));
 

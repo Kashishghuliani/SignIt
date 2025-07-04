@@ -74,11 +74,13 @@ exports.sendSignatureLink = async (req, res) => {
     document.tokenExpires = Date.now() + 24 * 60 * 60 * 1000;
     await document.save();
 
-    const link = `http://localhost:3000/sign/${document.token}`;
+    const link = `${process.env.FRONTEND_URL}/sign/${document.token}`;
+
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: 'kashishghuliani2004@gmail.com', pass: 'hzjolqufljrotkuv' }
-    });
+  service: 'gmail',
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+});
+
 
     await transporter.sendMail({
       from: 'kashishghuliani2004@gmail.com',

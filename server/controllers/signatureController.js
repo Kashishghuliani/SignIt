@@ -83,7 +83,11 @@ exports.finalizeDocument = async (req, res) => {
     fs.writeFileSync(signedPath, await pdfDoc.save());
 
     logAction({ documentId, action: "Final PDF Generated", user: req.userName || "Unknown", email: req.userEmail || "-", ip: req.ip });
-    res.json({ message: "Final signed PDF generated", signedPdfUrl: `http://localhost:5000/uploads/${path.basename(signedPath)}` });
+    res.json({
+  message: "Final signed PDF generated",
+  signedPdfUrl: `${process.env.REACT_APP_BACKEND_URL}/uploads/${path.basename(signedPath)}`
+});
+
   } catch (err) {
     console.error("Finalize Error:", err);
     res.status(500).json({ message: err.message });
