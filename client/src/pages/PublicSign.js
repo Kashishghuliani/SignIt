@@ -29,8 +29,6 @@ const PublicSign = () => {
       try {
         const res = await axios.get(`${API_URL}/api/docs/public/${token}`);
         if (!res.data?.filepath) throw new Error('Invalid file');
-
-        // Load PDF from the backend uploads folder
         setFileUrl(`${API_URL}/uploads/${res.data.filepath}`);
       } catch (err) {
         console.error(err);
@@ -93,9 +91,9 @@ const PublicSign = () => {
 
   return (
     <div className="p-4 flex justify-center">
-      <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl">
+      <div className="bg-white shadow-lg rounded-lg p-4 sm:p-6 w-full max-w-3xl">
 
-        <h2 className="text-3xl font-bold text-center mb-6" style={{ color: '#d90429' }}>
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 text-[#d90429]">
           Document Signature
         </h2>
 
@@ -116,25 +114,30 @@ const PublicSign = () => {
               onChange={(e) => setSignatureText(e.target.value)}
               disabled={placed}
             />
-            <div className="flex items-center gap-4">
-              <label className="text-sm">Font Size:</label>
-              <input
-                type="number"
-                min="10"
-                max="50"
-                value={fontSize}
-                onChange={(e) => setFontSize(Number(e.target.value))}
-                className="border px-2 py-1 w-20"
-                disabled={placed}
-              />
-              <label className="text-sm">Color:</label>
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-10 h-10 border"
-                disabled={placed}
-              />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-sm">Font Size:</label>
+                <input
+                  type="number"
+                  min="10"
+                  max="50"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="border px-2 py-1 w-full sm:w-20"
+                  disabled={placed}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm">Color:</label>
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-10 h-10 border"
+                  disabled={placed}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -144,11 +147,14 @@ const PublicSign = () => {
             ref={wrapperRef}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            className="border mx-auto relative overflow-hidden bg-white shadow mb-6"
-            style={{ width: '100%', maxWidth: '700px', minHeight: '900px' }}
+            className="border mx-auto relative overflow-hidden bg-white shadow mb-6 w-full"
+            style={{
+              maxWidth: '100%',
+              minHeight: '500px'
+            }}
           >
             <Document file={fileUrl}>
-              <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} />
+              <Page pageNumber={1} width={pdfSize.width > 0 ? pdfSize.width : 600} onLoadSuccess={onPageLoadSuccess} />
             </Document>
 
             {pdfSize.width > 0 && signatureText.trim() && (

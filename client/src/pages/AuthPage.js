@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
+import '../App.css';
+
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'https://signit-backend-js8l.onrender.com';
 
@@ -15,7 +17,6 @@ const AuthPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!email.trim() || !password.trim() || (isSignUp && !fullName.trim())) {
       alert('Please fill in all required fields.');
       return;
@@ -31,7 +32,6 @@ const AuthPage = () => {
       if (isSignUp) {
         alert("Account created successfully! Please sign in.");
         setIsSignUp(false);
-        // Clear fields after signup
         setEmail('');
         setPassword('');
         setFullName('');
@@ -48,32 +48,31 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
-      <div className="flex w-[900px] h-[500px] bg-white rounded-lg shadow-2xl overflow-hidden">
-        
-        {/* Left Section (Form) */}
-        <div className="w-1/2 flex flex-col items-center justify-center px-10">
+      <div className="responsive-container">
+
+        {/* Left Section */}
+        <div className="form-section">
           <h2 className="text-3xl font-bold text-gray-800 mb-4">
             {isSignUp ? "Create Account" : "Sign In"}
           </h2>
 
           <div className="flex gap-4 mb-6">
             <GoogleLogin
-  onSuccess={async (credentialResponse) => {
-    try {
-      const res = await axios.post(`${API_URL}/api/auth/google`, {
-        credential: credentialResponse.credential
-      });
-      localStorage.setItem('token', res.data.token);
-      alert("Google Login Successful!");
-      navigate('/dashboard');
-    } catch (err) {
-      console.error(err);
-      alert("Google Login Failed");
-    }
-  }}
-  onError={() => alert("Google Login Failed")}
-/>
-
+              onSuccess={async (credentialResponse) => {
+                try {
+                  const res = await axios.post(`${API_URL}/api/auth/google`, {
+                    credential: credentialResponse.credential
+                  });
+                  localStorage.setItem('token', res.data.token);
+                  alert("Google Login Successful!");
+                  navigate('/dashboard');
+                } catch (err) {
+                  console.error(err);
+                  alert("Google Login Failed");
+                }
+              }}
+              onError={() => alert("Google Login Failed")}
+            />
           </div>
 
           <p className="text-gray-400 text-sm mb-6">or use your email account</p>
@@ -135,7 +134,7 @@ const AuthPage = () => {
         </div>
 
         {/* Right Section */}
-        <div className="w-1/2 flex flex-col items-center justify-center bg-gradient-to-r from-red-400 to-red-600 text-white text-center p-10">
+        <div className="right-section">
           <h2 className="text-3xl font-bold mb-4">
             {isSignUp ? "Welcome to SignIt!" : "SignIt"}
           </h2>

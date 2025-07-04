@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   FaEye, FaPaperPlane, FaFilePdf, FaClipboardList, FaTrash, FaPaintBrush
 } from 'react-icons/fa';
+import '../App.css';
+
+
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -163,7 +166,8 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen text-gray-800">
 
-      <div className="w-64 bg-gradient-to-b from-red-500 to-pink-500 text-white flex flex-col justify-between p-4 shadow-lg z-10">
+      <div className="sidebar">
+
         <div>
           <h2 className="text-2xl font-bold mb-6">SignIt</h2>
           <button className="block w-full text-left mb-4 hover:bg-white hover:text-red-500 px-3 py-2 rounded" onClick={fetchDocuments}>
@@ -181,8 +185,8 @@ const Dashboard = () => {
         </div>
         <button onClick={logout} className="bg-white text-red-500 font-bold px-4 py-2 rounded">Logout</button>
       </div>
+      <div className="main-content">
 
-      <div className="flex-1 p-6 relative z-0">
         <h1 className="text-3xl font-bold mb-6">My PDF Dashboard</h1>
 
         <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} className={`border-2 border-dashed p-6 text-center rounded mb-8 ${dragActive ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>

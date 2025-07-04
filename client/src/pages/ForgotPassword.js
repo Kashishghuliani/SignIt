@@ -6,7 +6,6 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const navigate = useNavigate();
 
-  // Use env variable for backend URL
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
   const handleSubmit = async (e) => {
@@ -24,12 +23,12 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
-      <div className="flex w-[800px] h-[400px] bg-white rounded-lg shadow-2xl overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans px-4">
+      <div className="flex flex-col md:flex-row w-full max-w-4xl bg-white rounded-lg shadow-2xl overflow-hidden">
 
         {/* Left Side */}
-        <div className="w-1/2 flex flex-col items-center justify-center px-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Forgot Password?</h2>
+        <div className="md:w-1/2 w-full flex flex-col items-center justify-center px-6 py-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">Forgot Password?</h2>
           <p className="text-gray-500 text-sm mb-6 text-center">
             Enter your email address and we'll send you a link to reset your password.
           </p>
@@ -52,7 +51,7 @@ const ForgotPassword = () => {
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-gray-500">
+          <p className="mt-6 text-sm text-gray-500 text-center">
             Remembered your password?{' '}
             <button
               onClick={() => navigate('/')}
@@ -64,8 +63,8 @@ const ForgotPassword = () => {
         </div>
 
         {/* Right Side */}
-        <div className="w-1/2 flex flex-col items-center justify-center bg-gradient-to-r from-red-400 to-red-600 text-white text-center p-10">
-          <h2 className="text-3xl font-bold mb-4">Secure Your Account</h2>
+        <div className="md:w-1/2 w-full flex flex-col items-center justify-center bg-gradient-to-r from-red-400 to-red-600 text-white text-center p-6 md:p-10">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">Secure Your Account</h2>
           <p>
             Forgot your password? Don't worry! We'll help you get back on track quickly and securely.
           </p>

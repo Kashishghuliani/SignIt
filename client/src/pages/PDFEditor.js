@@ -51,17 +51,14 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     }
   };
 
-  // Use onLoadSuccess on Page to get PDF render size
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1 });
     setPdfRenderSize({ width: viewport.width, height: viewport.height });
   };
 
-  // Global drag event handlers
   useEffect(() => {
     const handleMove = (e) => {
-      if (!isDragging) return;
-      if (!pdfWrapperRef.current) return;
+      if (!isDragging || !pdfWrapperRef.current) return;
 
       const rect = pdfWrapperRef.current.getBoundingClientRect();
       let x = e.clientX - rect.left;
@@ -162,15 +159,22 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     <div
       ref={pdfWrapperRef}
       className="relative border border-gray-300 bg-white shadow-md mx-auto"
-      style={{ width: '600px', height: '800px', marginTop: '20px', position: 'relative' }}
+      style={{
+        width: '100%',
+        maxWidth: '600px',
+        height: 'auto',
+        marginTop: '20px',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
     >
-      <div style={{ display: 'inline-block' }}>
+      <div className="w-full">
         <Document file={fileUrl}>
-          <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} />
+          <Page pageNumber={1} onLoadSuccess={onPageLoadSuccess} width={pdfRenderSize.width > 0 ? pdfRenderSize.width : 600} />
         </Document>
       </div>
 
-      {/* Render Existing Signatures */}
+      {/* Existing Signatures */}
       {signatures.map((sig) => (
         <div
           key={sig._id}
@@ -190,28 +194,15 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
           {sig.status === 'Pending' && (
             <>
-              <button
-                onClick={() => updateStatus(sig._id, 'Signed')}
-                className="ml-1 text-white hover:scale-110"
-                title="Mark as Signed"
-              >✔️</button>
-
-              <button
-                onClick={() => {
-                  const reason = prompt('Reason for rejection:') || 'No reason';
-                  updateStatus(sig._id, 'Rejected', reason);
-                }}
-                className="ml-1 text-white hover:scale-110"
-                title="Reject"
-              >❌</button>
+              <button onClick={() => updateStatus(sig._id, 'Signed')} className="ml-1 text-white hover:scale-110" title="Mark as Signed">✔️</button>
+              <button onClick={() => {
+                const reason = prompt('Reason for rejection:') || 'No reason';
+                updateStatus(sig._id, 'Rejected', reason);
+              }} className="ml-1 text-white hover:scale-110" title="Reject">❌</button>
             </>
           )}
 
-          <button
-            onClick={() => deleteSignature(sig._id)}
-            className="ml-1 text-white hover:scale-110"
-            title="Delete"
-          >🗑️</button>
+          <button onClick={() => deleteSignature(sig._id)} className="ml-1 text-white hover:scale-110" title="Delete">🗑️</button>
         </div>
       ))}
 
