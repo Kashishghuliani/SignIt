@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/sign/:path*", "destination": "/" },
-    { "source": "/audit/:path*", "destination": "/" }
+    { "source": "/sign/:token", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/audit/:id", "destination": "/index.html" }
   ]
 }
