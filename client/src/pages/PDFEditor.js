@@ -35,7 +35,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const handleResize = () => {
       if (pdfWrapperRef.current) {
         const containerWidth = pdfWrapperRef.current.offsetWidth;
-        setPdfRenderSize((prev) => ({ ...prev, width: Math.min(containerWidth, 600) }));
+        setPdfRenderSize({ width: Math.min(containerWidth, 600), height: pdfRenderSize.height });
       }
     };
 
@@ -53,13 +53,14 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   const fetchSignatures = async () => {
+    if (!documentId || !token) return;
     try {
       const res = await axios.get(`${API_URL}/api/signatures/${documentId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSignatures(res.data);
     } catch (err) {
-      console.error('Failed to fetch signatures:', err);
+      console.error('❌ Failed to fetch signatures:', err);
     }
   };
 
@@ -67,8 +68,8 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const viewport = page.getViewport({ scale: 1 });
     const containerWidth = pdfWrapperRef.current?.offsetWidth || 600;
     const scale = containerWidth / viewport.width;
-
     const scaledViewport = page.getViewport({ scale });
+
     setPdfRenderSize({
       width: scaledViewport.width,
       height: scaledViewport.height
@@ -79,31 +80,16 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const move = (x, y) => {
       if (!pdfWrapperRef.current) return;
       const rect = pdfWrapperRef.current.getBoundingClientRect();
-      const newX = Math.max(0, Math.min(x - rect.left, rect.width));
-      const newY = Math.max(0, Math.min(y - rect.top, rect.height));
-      setDragPos({ x: newX, y: newY });
+      setDragPos({
+        x: Math.max(0, Math.min(x - rect.left, rect.width)),
+        y: Math.max(0, Math.min(y - rect.top, rect.height))
+      });
     };
 
     const handleMouseMove = (e) => isDragging && move(e.clientX, e.clientY);
-    const handleMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        saveSignature();
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      if (isDragging && e.touches.length === 1) {
-        move(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    };
-
-    const handleTouchEnd = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        saveSignature();
-      }
-    };
+    const handleMouseUp = () => isDragging && (setIsDragging(false), saveSignature());
+    const handleTouchMove = (e) => isDragging && move(e.touches[0].clientX, e.touches[0].clientY);
+    const handleTouchEnd = () => isDragging && (setIsDragging(false), saveSignature());
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -120,44 +106,43 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   const saveSignature = async () => {
     if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
-    try {
-      const percentX = dragPos.x / pdfRenderSize.width;
-      const percentY = dragPos.y / pdfRenderSize.height;
+    if (!documentId || !token || pdfRenderSize.width === 0 || pdfRenderSize.height === 0) {
+      alert("Missing document or PDF dimensions.");
+      return;
+    }
 
-      await axios.post(`${API_URL}/api/signatures`, {
-        documentId,
-        xPercent: percentX,
-        yPercent: percentY,
-        page: 1,
-        renderWidth: pdfRenderSize.width,
-        renderHeight: pdfRenderSize.height,
-        text: signatureStyle.text,
-        fontSize: signatureStyle.fontSize,
-        fontColor: signatureStyle.fontColor
-      }, {
+    const percentX = dragPos.x / pdfRenderSize.width;
+    const percentY = dragPos.y / pdfRenderSize.height;
+
+    const payload = {
+      documentId,
+      xPercent: percentX,
+      yPercent: percentY,
+      page: 1,
+      renderWidth: pdfRenderSize.width,
+      renderHeight: pdfRenderSize.height,
+      text: signatureStyle.text,
+      fontSize: signatureStyle.fontSize,
+      fontColor: signatureStyle.fontColor
+    };
+
+    console.log("Saving signature with payload:", payload);
+
+    try {
+      await axios.post(`${API_URL}/api/signatures`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setDragPos({ x: 100, y: 100 }); // ✅ Reset position so next drag starts fresh
+      setDragPos({ x: 100, y: 100 }); // reset
       fetchSignatures();
     } catch (err) {
-      console.error('❌ Save Error:', err);
-      alert('Failed to save signature. Try again.');
+      console.error('❌ Save Error:', err.response?.data || err.message);
+      alert('Failed to save signature. See console for details.');
     }
   };
 
-  const handleMouseDown = () => {
-    const latestText = localStorage.getItem('signatureText') || '';
-    if (!latestText.trim()) {
-      alert("Please set your signature style first.");
-      return;
-    }
-    setIsDragging(true);
-  };
-
-  const handleTouchStart = () => {
-    const latestText = localStorage.getItem('signatureText') || '';
-    if (!latestText.trim()) {
+  const handleStart = () => {
+    if (!signatureStyle.text.trim()) {
       alert("Please set your signature style first.");
       return;
     }
@@ -190,11 +175,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   return (
-    <div
-      ref={pdfWrapperRef}
-      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
-      style={{ marginTop: '20px' }}
-    >
+    <div ref={pdfWrapperRef} className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto" style={{ marginTop: '20px' }}>
       <div className="w-full flex justify-center">
         <Document file={fileUrl}>
           <Page
@@ -242,8 +223,8 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       {/* Draggable Signature */}
       {signatureStyle.text.trim() && (
         <div
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
+          onMouseDown={handleStart}
+          onTouchStart={handleStart}
           className="absolute cursor-move text-sm shadow-lg select-none"
           style={{
             top: `${dragPos.y}px`,
