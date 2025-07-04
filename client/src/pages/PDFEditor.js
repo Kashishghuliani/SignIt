@@ -12,7 +12,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
-  const [canPlace, setCanPlace] = useState(true); // 👈 controls per-move placement
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
     fontSize: 14,
@@ -50,8 +49,12 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   }, []);
 
   useEffect(() => {
-    const move = (x, y) => {
-      if (!pdfWrapperRef.current || !canPlace || !pdfReady || isSaving) return;
+    if (!pdfReady || !signatureStyle.text.trim()) return;
+
+    let placed = false;
+
+    const handleMove = (x, y) => {
+      if (isSaving || placed || !pdfWrapperRef.current) return;
 
       const rect = pdfWrapperRef.current.getBoundingClientRect();
       const newX = Math.max(0, Math.min(x - rect.left, rect.width));
@@ -59,27 +62,26 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
       setDragPos({ x: newX, y: newY });
       saveSignature(newX, newY);
-      setCanPlace(false); // 👈 disable until next move
+      placed = true;
     };
 
-    const handleMouseMove = (e) => {
-      setCanPlace(true);
-      move(e.clientX, e.clientY);
+    const handleMouseMove = (e) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e) => handleMove(e.touches[0].clientX, e.touches[0].clientY);
+
+    const activate = () => {
+      placed = false;
+      window.addEventListener('mousemove', handleMouseMove, { once: true });
+      window.addEventListener('touchmove', handleTouchMove, { once: true });
     };
 
-    const handleTouchMove = (e) => {
-      setCanPlace(true);
-      move(e.touches[0].clientX, e.touches[0].clientY);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('mousedown', activate);
+    window.addEventListener('touchstart', activate);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('mousedown', activate);
+      window.removeEventListener('touchstart', activate);
     };
-  }, [pdfReady, canPlace, isSaving]);
+  }, [pdfReady, signatureStyle.text, isSaving]);
 
   const loadSignatureStyle = () => {
     setSignatureStyle({
@@ -111,7 +113,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       width: scaledViewport.width,
       height: scaledViewport.height
     });
-    setPdfReady(true); // ✅ Now safe to save
+    setPdfReady(true);
   };
 
   const saveSignature = async (x, y) => {
@@ -217,7 +219,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       ))}
 
       {/* Floating Preview Signature */}
-      {signatureStyle.text.trim() && canPlace && pdfReady && (
+      {signatureStyle.text.trim() && pdfReady && (
         <div
           className="absolute text-sm shadow-lg select-none pointer-events-none"
           style={{
