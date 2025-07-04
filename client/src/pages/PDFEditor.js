@@ -134,7 +134,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       await axios.post(`${API_URL}/api/signatures`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setDragPos({ x: 100, y: 100 }); // Reset for next signature
+      
       fetchSignatures();
     } catch (err) {
       console.error('❌ Save Error:', err.response?.data || err.message);
