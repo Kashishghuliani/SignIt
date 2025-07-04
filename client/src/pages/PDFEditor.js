@@ -11,6 +11,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
     fontSize: 14,
@@ -35,7 +36,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     const handleResize = () => {
       if (pdfWrapperRef.current) {
         const containerWidth = pdfWrapperRef.current.offsetWidth;
-        setPdfRenderSize((prev) => ({
+        setPdfRenderSize(prev => ({
           ...prev,
           width: Math.min(containerWidth, 600),
         }));
@@ -90,9 +91,19 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     };
 
     const handleMouseMove = (e) => isDragging && move(e.clientX, e.clientY);
-    const handleMouseUp = () => isDragging && (setIsDragging(false), saveSignature());
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        saveSignature();
+      }
+    };
     const handleTouchMove = (e) => isDragging && move(e.touches[0].clientX, e.touches[0].clientY);
-    const handleTouchEnd = () => isDragging && (setIsDragging(false), saveSignature());
+    const handleTouchEnd = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        saveSignature();
+      }
+    };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -108,50 +119,42 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   }, [isDragging]);
 
   const saveSignature = async () => {
-  if (isSaving) return; // 🛑 Don't allow another save while one is in progress
-  if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
+    if (isSaving || !signatureStyle.text.trim()) return;
 
-  const { width, height } = pdfRenderSize;
-  if (!documentId || !token || width === 0 || height === 0) {
-    alert("Missing document or PDF dimensions.");
-    return;
-  }
-
-  const payload = {
-    documentId,
-    page: 1,
-    x: dragPos.x,
-    y: dragPos.y,
-    renderWidth: width,
-    renderHeight: height,
-    text: signatureStyle.text,
-    fontSize: signatureStyle.fontSize,
-    fontColor: signatureStyle.fontColor
-  };
-
-  console.log("✅ Saving payload:", payload);
-  setIsSaving(true); // 🟡 Start saving
-
-  try {
-    await axios.post(`${API_URL}/api/signatures`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    fetchSignatures();
-  } catch (err) {
-    console.error('❌ Save Error:', err.response?.data || err.message);
-    alert('Failed to save signature. See console.');
-  } finally {
-    setIsSaving(false); // ✅ Reset flag after save attempt
-  }
-};
-
-
-  const handleStart = () => {
-    if (!signatureStyle.text.trim()) {
-      alert("Please set your signature style first.");
+    const { width, height } = pdfRenderSize;
+    if (!documentId || !token || width === 0 || height === 0) {
+      alert("Missing document or PDF dimensions.");
       return;
     }
+
+    const payload = {
+      documentId,
+      page: 1,
+      x: dragPos.x,
+      y: dragPos.y,
+      renderWidth: width,
+      renderHeight: height,
+      text: signatureStyle.text,
+      fontSize: signatureStyle.fontSize,
+      fontColor: signatureStyle.fontColor
+    };
+
+    setIsSaving(true);
+    try {
+      await axios.post(`${API_URL}/api/signatures`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchSignatures(); // Refresh UI
+    } catch (err) {
+      console.error('❌ Save Error:', err.response?.data || err.message);
+      alert('Failed to save signature. See console.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStart = () => {
+    if (!signatureStyle.text.trim() || isSaving) return;
     setIsDragging(true);
   };
 
@@ -192,7 +195,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </Document>
       </div>
 
-      {/* Existing Signatures (render using absolute x/y) */}
+      {/* Existing Signatures */}
       {signatures.map(sig => {
         const posX = sig.x;
         const posY = sig.y;
