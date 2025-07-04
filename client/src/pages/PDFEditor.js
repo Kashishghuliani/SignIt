@@ -104,42 +104,47 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     };
   }, [isDragging]);
 
-  const saveSignature = async () => {
-    if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
-    if (!documentId || !token || pdfRenderSize.width === 0 || pdfRenderSize.height === 0) {
-      alert("Missing document or PDF dimensions.");
-      return;
-    }
+   
+   
+   const saveSignature = async () => {
+  if (!signatureStyle.text.trim()) return alert("Please set your signature style.");
 
-    const percentX = dragPos.x / pdfRenderSize.width;
-    const percentY = dragPos.y / pdfRenderSize.height;
+  const { width, height } = pdfRenderSize;
+  if (!documentId || !token || width === 0 || height === 0) {
+    alert("Missing document or PDF dimensions.");
+    return;
+  }
 
-    const payload = {
-      documentId,
-      xPercent: percentX,
-      yPercent: percentY,
-      page: 1,
-      renderWidth: pdfRenderSize.width,
-      renderHeight: pdfRenderSize.height,
-      text: signatureStyle.text,
-      fontSize: signatureStyle.fontSize,
-      fontColor: signatureStyle.fontColor
-    };
+  // Calculate absolute position instead of percentages
+  const absX = dragPos.x;
+  const absY = dragPos.y;
 
-    console.log("Saving signature with payload:", payload);
-
-    try {
-      await axios.post(`${API_URL}/api/signatures`, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setDragPos({ x: 100, y: 100 }); // reset
-      fetchSignatures();
-    } catch (err) {
-      console.error('❌ Save Error:', err.response?.data || err.message);
-      alert('Failed to save signature. See console for details.');
-    }
+  const payload = {
+    documentId,
+    page: 1,
+    x: absX,
+    y: absY,
+    renderWidth: width,
+    renderHeight: height,
+    text: signatureStyle.text,
+    fontSize: signatureStyle.fontSize,
+    fontColor: signatureStyle.fontColor
   };
+
+  console.log("✅ Saving payload:", payload);
+
+  try {
+    await axios.post(`${API_URL}/api/signatures`, payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setDragPos({ x: 100, y: 100 });
+    fetchSignatures();
+  } catch (err) {
+    console.error('❌ Save Error:', err.response?.data || err.message);
+    alert('Failed to save signature. See console.');
+  }
+};
+
 
   const handleStart = () => {
     if (!signatureStyle.text.trim()) {
