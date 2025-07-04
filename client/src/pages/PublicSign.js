@@ -82,7 +82,7 @@ const PublicSign = () => {
         color
       });
       alert('Document signed successfully!');
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       alert('Error signing document');
