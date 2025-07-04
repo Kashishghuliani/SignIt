@@ -13,6 +13,8 @@ const PublicSign = () => {
 
   const [fileUrl, setFileUrl] = useState('');
   const [pdfSize, setPdfSize] = useState({ width: 0, height: 0 });
+  const [containerWidth, setContainerWidth] = useState(600);
+
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [placed, setPlaced] = useState(false);
@@ -24,6 +26,7 @@ const PublicSign = () => {
 
   const wrapperRef = useRef(null);
 
+  // Fetch the document by public link
   useEffect(() => {
     const fetchDoc = async () => {
       try {
@@ -38,11 +41,26 @@ const PublicSign = () => {
     fetchDoc();
   }, [token, API_URL]);
 
+  // Adjust PDF render size when page loads
   const onPageLoadSuccess = (page) => {
     const viewport = page.getViewport({ scale: 1 });
     setPdfSize({ width: viewport.width, height: viewport.height });
   };
 
+  // Measure container width to make PDF responsive
+  useEffect(() => {
+    const updateWidth = () => {
+      if (wrapperRef.current) {
+        setContainerWidth(wrapperRef.current.offsetWidth);
+      }
+    };
+
+    updateWidth(); // Initial
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  // Handle dragging the signature
   const handleMouseDown = () => {
     if (!placed && signatureText.trim()) setIsDragging(true);
   };
@@ -62,6 +80,7 @@ const PublicSign = () => {
     }
   };
 
+  // Handle final sign submission
   const handleSign = async () => {
     if (pdfSize.width === 0 || pdfSize.height === 0 || !signatureText.trim()) {
       return alert('Please enter your name and wait for the PDF to load.');
@@ -150,11 +169,15 @@ const PublicSign = () => {
             className="border mx-auto relative overflow-hidden bg-white shadow mb-6 w-full"
             style={{
               maxWidth: '100%',
-              minHeight: '500px'
+              // Remove minHeight to let it scale naturally
             }}
           >
             <Document file={fileUrl}>
-              <Page pageNumber={1} width={pdfSize.width > 0 ? pdfSize.width : 600} onLoadSuccess={onPageLoadSuccess} />
+              <Page
+                pageNumber={1}
+                width={containerWidth}
+                onLoadSuccess={onPageLoadSuccess}
+              />
             </Document>
 
             {pdfSize.width > 0 && signatureText.trim() && (
