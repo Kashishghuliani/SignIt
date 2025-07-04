@@ -10,7 +10,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [signatures, setSignatures] = useState([]);
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
@@ -48,6 +47,36 @@ const PDFEditor = ({ fileUrl, documentId }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    // Start auto-follow when component mounts
+    const move = (x, y) => {
+      if (!pdfWrapperRef.current) return;
+      const rect = pdfWrapperRef.current.getBoundingClientRect();
+      setDragPos({
+        x: Math.max(0, Math.min(x - rect.left, rect.width)),
+        y: Math.max(0, Math.min(y - rect.top, rect.height))
+      });
+    };
+
+    const handleMouseMove = (e) => move(e.clientX, e.clientY);
+    const handleTouchMove = (e) => move(e.touches[0].clientX, e.touches[0].clientY);
+
+    const handleMouseUp = () => saveSignature();
+    const handleTouchEnd = () => saveSignature();
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [pdfWrapperRef.current, signatureStyle, dragPos]);
+
   const loadSignatureStyle = () => {
     setSignatureStyle({
       text: localStorage.getItem('signatureText') || '',
@@ -79,44 +108,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       height: scaledViewport.height
     });
   };
-
-  useEffect(() => {
-    const move = (x, y) => {
-      if (!pdfWrapperRef.current) return;
-      const rect = pdfWrapperRef.current.getBoundingClientRect();
-      setDragPos({
-        x: Math.max(0, Math.min(x - rect.left, rect.width)),
-        y: Math.max(0, Math.min(y - rect.top, rect.height))
-      });
-    };
-
-    const handleMouseMove = (e) => isDragging && move(e.clientX, e.clientY);
-    const handleMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        saveSignature();
-      }
-    };
-    const handleTouchMove = (e) => isDragging && move(e.touches[0].clientX, e.touches[0].clientY);
-    const handleTouchEnd = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        saveSignature();
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    window.addEventListener('touchmove', handleTouchMove);
-    window.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isDragging]);
 
   const saveSignature = async () => {
     if (isSaving || !signatureStyle.text.trim()) return;
@@ -152,11 +143,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       setIsSaving(false);
     }
   };
-
-  const handleStart = () => {
-  if (!signatureStyle.text.trim() || isSaving) return;
-  setIsDragging(true);
-};
 
   const updateStatus = async (sigId, status, reason = '') => {
     try {
@@ -225,36 +211,28 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </div>
       ))}
 
-      {/* Draggable Signature */}
+      {/* Floating Signature */}
       {signatureStyle.text.trim() && (
         <div
-  onMouseDown={(e) => {
-    e.preventDefault(); // Prevent text selection or click conflict
-    handleStart();
-  }}
-  onTouchStart={(e) => {
-    e.preventDefault(); // For mobile
-    handleStart();
-  }}
-  className="absolute cursor-move text-sm shadow-lg select-none"
-  style={{
-    top: `${dragPos.y}px`,
-    left: `${dragPos.x}px`,
-    transform: 'translate(-50%, -50%)',
-    color: signatureStyle.fontColor,
-    fontSize: `${signatureStyle.fontSize}px`,
-    background: 'rgba(255,255,255,0.7)',
-    padding: '4px 8px',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    fontWeight: '500',
-    zIndex: 9999
-  }}
-  title="Drag to place your signature"
->
-  ✍️ {signatureStyle.text}
-</div>
-
+          className="absolute cursor-none text-sm shadow-lg select-none"
+          style={{
+            top: `${dragPos.y}px`,
+            left: `${dragPos.x}px`,
+            transform: 'translate(-50%, -50%)',
+            color: signatureStyle.fontColor,
+            fontSize: `${signatureStyle.fontSize}px`,
+            background: 'rgba(255,255,255,0.7)',
+            padding: '4px 8px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontWeight: '500',
+            zIndex: 9999,
+            pointerEvents: 'none'
+          }}
+          title="Move your mouse to place the signature"
+        >
+          ✍️ {signatureStyle.text}
+        </div>
       )}
     </div>
   );
