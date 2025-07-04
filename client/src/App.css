@@ -1,4 +1,4 @@
-/* Container for Auth Page */
+/* Responsive Container for AuthPage */
 .responsive-container {
   display: flex;
   flex-wrap: wrap;
@@ -7,19 +7,20 @@
   background: white;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
-/* Left Section - Form */
+/* Form Section */
 .form-section {
   flex: 1 1 300px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 15px;
 }
 
-/* Right Section - Info Panel */
+/* Right Section */
 .right-section {
   flex: 1 1 300px;
   padding: 20px;
@@ -31,7 +32,7 @@
   text-align: center;
 }
 
-/* Hide Right Section on Small Screens */
+/* Hide Right Section on small screens */
 @media (max-width: 768px) {
   .responsive-container {
     flex-direction: column;
@@ -41,7 +42,19 @@
   }
 }
 
-/* Sidebar Desktop */
+/* Form Inputs and Buttons Full Width */
+input, select, button {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile Toggle Styling */
+.mobile-toggle {
+  text-align: center;
+  margin-top: 15px;
+}
+
+/* Sidebar Default Style for Desktop */
 .sidebar {
   width: 250px;
   min-height: 100vh;
@@ -52,19 +65,17 @@
   flex-direction: column;
   justify-content: space-between;
   position: fixed;
-  z-index: 20;
+  z-index: 10;
 }
 
-/* Main Content Desktop */
+/* Main Content Adjusted for Sidebar */
 .main-content {
   margin-left: 250px;
   padding: 20px;
   flex: 1;
-  width: calc(100% - 250px);
-  overflow-x: auto;
 }
 
-/* Sidebar Becomes Top Bar on Mobile */
+/* MOBILE: Sidebar Becomes Top Bar */
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;
@@ -78,64 +89,6 @@
 
   .main-content {
     margin-left: 0;
-    margin-top: 80px;
-    width: 100%;
+    margin-top: 100px;
   }
-}
-
-/* Tables Responsive */
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  text-align: center;
-  padding: 8px;
-  border: 1px solid #ccc;
-  word-break: break-word;
-}
-
-/* Drag & Drop Area Styling */
-.drag-area {
-  border: 2px dashed #ccc;
-  padding: 20px;
-  text-align: center;
-  border-radius: 8px;
-  transition: 0.3s;
-}
-
-.drag-area.active {
-  border-color: #ed1c24;
-  background-color: #ffe5e5;
-}
-
-/* Signature Modal Styling */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 350px;
-  text-align: center;
-}
-
-/* Responsive Button */
-button {
-  cursor: pointer;
-}
-
-/* Responsive Input */
-input, select {
-  max-width: 100%;
 }

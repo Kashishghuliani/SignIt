@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
-import '../App.css';
-
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || 'https://signit-backend-js8l.onrender.com';
 
@@ -47,21 +45,21 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans">
-      <div className="responsive-container">
-
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans px-4">
+      <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg max-w-4xl w-full overflow-hidden">
+        
         {/* Left Section */}
-        <div className="form-section">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+        <div className="flex-1 p-8 flex flex-col justify-center">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center md:text-left">
             {isSignUp ? "Create Account" : "Sign In"}
           </h2>
 
-          <div className="flex gap-4 mb-6">
+          <div className="flex justify-center md:justify-start mb-6">
             <GoogleLogin
               onSuccess={async (credentialResponse) => {
                 try {
                   const res = await axios.post(`${API_URL}/api/auth/google`, {
-                    credential: credentialResponse.credential
+                    credential: credentialResponse.credential,
                   });
                   localStorage.setItem('token', res.data.token);
                   alert("Google Login Successful!");
@@ -75,9 +73,11 @@ const AuthPage = () => {
             />
           </div>
 
-          <p className="text-gray-400 text-sm mb-6">or use your email account</p>
+          <p className="text-gray-400 text-sm mb-6 text-center md:text-left">
+            or use your email account
+          </p>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {isSignUp && (
               <input
                 type="text"
@@ -131,13 +131,30 @@ const AuthPage = () => {
               {isSignUp ? "Sign Up" : "Sign In"}
             </button>
           </form>
+
+          {/* Mobile Toggle Below Form */}
+          <div className="block md:hidden mt-4 text-center">
+            {isSignUp ? (
+              <p className="text-sm">
+                Already have an account?{' '}
+                <button onClick={() => setIsSignUp(false)} className="text-red-500 underline">
+                  Sign In
+                </button>
+              </p>
+            ) : (
+              <p className="text-sm">
+                Don't have an account?{' '}
+                <button onClick={() => setIsSignUp(true)} className="text-red-500 underline">
+                  Sign Up
+                </button>
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* Right Section */}
-        <div className="right-section">
-          <h2 className="text-3xl font-bold mb-4">
-            {isSignUp ? "Welcome to SignIt!" : "SignIt"}
-          </h2>
+        {/* Right Section Hidden on Mobile */}
+        <div className="hidden md:flex flex-1 flex-col justify-center items-center bg-gradient-to-r from-red-500 to-red-700 text-white p-8 text-center">
+          <h2 className="text-3xl font-bold mb-4">{isSignUp ? "Welcome to SignIt!" : "SignIt"}</h2>
           <p className="mb-6">
             {isSignUp
               ? "Already have an account? Sign in to continue signing documents."
@@ -150,7 +167,6 @@ const AuthPage = () => {
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </div>
-
       </div>
     </div>
   );
