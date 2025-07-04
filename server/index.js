@@ -15,13 +15,11 @@ dotenv.config();
 
 const app = express();
 
-// Allowed Origins from .env
 const allowedOrigins = [
-  process.env.FRONTEND_URL,      // Vercel Frontend
-  'http://localhost:3000'        // Local testing
+  process.env.FRONTEND_URL,     
+  'http://localhost:3000'       
 ];
 
-// Enable CORS with dynamic origin check
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -33,27 +31,23 @@ app.use(cors({
   credentials: true,
 }));
 
-// Helmet with safer COOP/COEP configuration
-app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 
-// Allow JSON parsing
 app.use(express.json());
-
-// Serve uploaded PDFs statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/docs', documentRoutes);
 app.use('/api/signatures', signatureRoutes);
 app.use('/api/audit', auditRoutes);
 
-// Root Health Check
 app.get('/', (req, res) => res.send('✅ API is working'));
 
 const PORT = process.env.PORT || 5000;
 
-// Database Connection and Server Start
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     console.log('✅ MongoDB Connected');
