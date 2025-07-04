@@ -17,7 +17,7 @@ const app = express();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,     
-  'http://localhost:3000'       
+  'https://sign-it-5656.vercel.app'       
 ];
 
 app.use(cors({
