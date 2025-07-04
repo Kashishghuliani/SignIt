@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const helmet = require('helmet'); // <-- import helmet
 const path = require('path');
 
 // Routes
@@ -13,7 +14,19 @@ const auditRoutes = require('./routes/auditRoutes');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Enable CORS with credentials (adjust origin to your frontend URL)
+app.use(cors({
+  origin: 'https://sign-it-5656.vercel.app/', // replace with your actual frontend URL
+  credentials: true,
+}));
+
+// Use helmet with COOP and COEP headers enabled
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  crossOriginEmbedderPolicy: true
+}));
+
 app.use(express.json());
 
 // Serve Uploaded PDFs
