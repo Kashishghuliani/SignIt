@@ -10,8 +10,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   const [signatures, setSignatures] = useState([]);
   const [dragPos, setDragPos] = useState({ x: 100, y: 100 });
   const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 });
-  const [isPlacing, setIsPlacing] = useState(false); // Controls floating sig
   const [isSaving, setIsSaving] = useState(false);
+  const [pdfReady, setPdfReady] = useState(false);
+  const [canPlace, setCanPlace] = useState(true); // 👈 controls per-move placement
   const [signatureStyle, setSignatureStyle] = useState({
     text: '',
     fontSize: 14,
@@ -50,19 +51,26 @@ const PDFEditor = ({ fileUrl, documentId }) => {
 
   useEffect(() => {
     const move = (x, y) => {
-      if (!pdfWrapperRef.current || isSaving) return;
+      if (!pdfWrapperRef.current || !canPlace || !pdfReady || isSaving) return;
 
       const rect = pdfWrapperRef.current.getBoundingClientRect();
       const newX = Math.max(0, Math.min(x - rect.left, rect.width));
       const newY = Math.max(0, Math.min(y - rect.top, rect.height));
 
       setDragPos({ x: newX, y: newY });
-      setIsPlacing(true); // show the floating signature
-      saveSignature(newX, newY); // place immediately
+      saveSignature(newX, newY);
+      setCanPlace(false); // 👈 disable until next move
     };
 
-    const handleMouseMove = (e) => move(e.clientX, e.clientY);
-    const handleTouchMove = (e) => move(e.touches[0].clientX, e.touches[0].clientY);
+    const handleMouseMove = (e) => {
+      setCanPlace(true);
+      move(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e) => {
+      setCanPlace(true);
+      move(e.touches[0].clientX, e.touches[0].clientY);
+    };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('touchmove', handleTouchMove);
@@ -71,7 +79,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [pdfWrapperRef.current, signatureStyle]);
+  }, [pdfReady, canPlace, isSaving]);
 
   const loadSignatureStyle = () => {
     setSignatureStyle({
@@ -103,6 +111,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       width: scaledViewport.width,
       height: scaledViewport.height
     });
+    setPdfReady(true); // ✅ Now safe to save
   };
 
   const saveSignature = async (x, y) => {
@@ -137,7 +146,6 @@ const PDFEditor = ({ fileUrl, documentId }) => {
       alert('Failed to save signature. See console.');
     } finally {
       setIsSaving(false);
-      setTimeout(() => setIsPlacing(false), 100); // hide floating sig
     }
   };
 
@@ -167,11 +175,7 @@ const PDFEditor = ({ fileUrl, documentId }) => {
   };
 
   return (
-    <div
-      ref={pdfWrapperRef}
-      className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto"
-      style={{ marginTop: '20px' }}
-    >
+    <div ref={pdfWrapperRef} className="relative mx-auto bg-white shadow border rounded w-full max-w-[700px] overflow-auto" style={{ marginTop: '20px' }}>
       <div className="w-full flex justify-center">
         <Document file={fileUrl}>
           <Page
@@ -212,10 +216,10 @@ const PDFEditor = ({ fileUrl, documentId }) => {
         </div>
       ))}
 
-      {/* Floating Signature */}
-      {signatureStyle.text.trim() && isPlacing && (
+      {/* Floating Preview Signature */}
+      {signatureStyle.text.trim() && canPlace && pdfReady && (
         <div
-          className="absolute cursor-none text-sm shadow-lg select-none"
+          className="absolute text-sm shadow-lg select-none pointer-events-none"
           style={{
             top: `${dragPos.y}px`,
             left: `${dragPos.x}px`,
@@ -227,10 +231,9 @@ const PDFEditor = ({ fileUrl, documentId }) => {
             border: '1px solid #ccc',
             borderRadius: '4px',
             fontWeight: '500',
-            zIndex: 9999,
-            pointerEvents: 'none'
+            zIndex: 9999
           }}
-          title="Signature Placing"
+          title="Move to place signature"
         >
           ✍️ {signatureStyle.text}
         </div>
